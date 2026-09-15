@@ -18,43 +18,20 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * 전송 계층.
- *  - 서버 배포: fetch 로 실제 REST API 호출
- *  - 서버 없는 정적 배포: 동일한 라우터를 브라우저에서 실행 (embedded-server.js)
- * window.SONAR_EMBEDDED 가 true 면 내장 런타임을 쓴다.
- */
-export const isEmbedded = () => globalThis.SONAR_EMBEDDED === true;
-let embedded = null;
-async function embeddedHandler() {
-  if (!embedded) embedded = await import('./embedded-server.js');
-  return embedded;
-}
-
 async function request(method, path, { body, query } = {}) {
   const url = new URL(BASE + path, location.origin);
   if (query) Object.entries(query).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v); });
-
-  let status, payload;
-  if (isEmbedded()) {
-    const { handle } = await embeddedHandler();
-    const q = Object.fromEntries(url.searchParams.entries());
-    ({ status, payload } = await handle(method, url.pathname, { query: q, body: body ?? {}, token: auth.token }));
-  } else {
-    const headers = {};
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
-    if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
-    const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-    status = res.status;
-    if (status === 204) return null;
-    const text = await res.text();
-    try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
-  }
-
-  if (status === 204) return null;
-  if (status < 200 || status >= 300) {
-    const err = new ApiError(status, payload);
-    if (status === 401 && !path.startsWith('/auth/')) { auth.clear(); location.hash = '#/login'; }
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (auth.token) headers.Authorization = `Bearer ${auth.token}`;
+  const res = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (res.status === 204) return null;
+  const text = await res.text();
+  let payload = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
+  if (!res.ok) {
+    const err = new ApiError(res.status, payload);
+    if (res.status === 401 && !path.startsWith('/auth/')) { auth.clear(); location.hash = '#/login'; }
     throw err;
   }
   return payload;
