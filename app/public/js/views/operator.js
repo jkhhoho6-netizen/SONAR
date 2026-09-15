@@ -217,7 +217,7 @@ export async function matchDetail({ params }) {
           </div>
         </div>
 
-        <div class="card" style="margin-bottom:16px"><div class="hd"><h3>리스크 점수 산출 근거 (FR-04)</h3>
+        <div class="card" style="margin-bottom:16px"><div class="hd"><h3>리스크 점수 산출 근거</h3>
           <span class="sp"></span><span class="meta">${dl != null ? (dl >= 0 ? `노출까지 D-${dl}` : `노출 후 ${-dl}일 경과`) : ''}</span></div>
           <div class="bd">
             <div class="formula">${esc(b.formula)}</div>
@@ -237,7 +237,7 @@ export async function matchDetail({ params }) {
             </tbody></table>
           </div></div>
 
-        <div class="card" style="margin-bottom:16px"><div class="hd"><h3>대응 시나리오 (FR-06)</h3><span class="sp"></span>
+        <div class="card" style="margin-bottom:16px"><div class="hd"><h3>대응 시나리오</h3><span class="sp"></span>
           <span class="meta">${pb.total}개 제안 · ${GRADE_LABEL[pb.riskGrade]} 등급</span></div>
           <div class="bd">
             <div id="pbs">${pb.items.map(p => `<div class="pb-item" data-pb="${p.playbookId}" data-type="${p.actionType}">
@@ -291,7 +291,7 @@ export async function matchDetail({ params }) {
           <a class="btn sm block" style="margin-top:12px" href="#/events/${m.eventId}">이벤트 상세 보기</a>
         </div></div>
 
-        <div class="card"><div class="hd"><h3>매칭 피드백 (FR-09)</h3></div><div class="bd">
+        <div class="card"><div class="hd"><h3>매칭 피드백</h3></div><div class="bd">
           ${m.feedback.length ? m.feedback.map(f => `<div class="banner ${f.isRelevant ? 'ok' : 'err'}" style="margin-bottom:8px">
             <span class="ic">${f.isRelevant ? '✓' : '⚑'}</span><div><b>${f.isRelevant ? '실제 영향 확인' : '오탐 신고'}</b>
             ${f.actualDelayDays != null ? ` · 실제 지연 ${f.actualDelayDays}일` : ''}<br>
@@ -326,7 +326,7 @@ export async function matchDetail({ params }) {
             result: form.result.value, resultNote: form.resultNote.value.trim() || null,
             playbookId: sel ? sel.dataset.pb : null
           });
-          toast('조치가 등록되었습니다. 영향 건 상태가 "조치 완료"로 변경됩니다.', { type:'ok', title:'FR-06 조치 등록' });
+          toast('조치가 등록되었습니다. 영향 건 상태가 "조치 완료"로 변경됩니다.', { type:'ok', title:'조치 등록 완료' });
           location.hash = `#/matches/${m.matchId}`; location.reload();
         } catch (err) {
           (err.details || []).forEach(d => { const el = page.querySelector(`[data-field="${d.field}"]`); if (el) el.classList.add('bad'); });
@@ -353,7 +353,7 @@ function renderActions(actions) {
 }
 
 function openNotifyModal(m) {
-  const md = modal({ title:'알림 발송 요청 (FR-07)', body:`
+  const md = modal({ title:'알림 발송 요청', body:`
     <div class="banner info" style="margin-bottom:14px"><span class="ic">ℹ</span><div>
       대외(고객사) 발송 건은 <b>시스템 관리자 승인 후</b> 전송됩니다. 사내 발송은 즉시 전송됩니다.</div></div>
     <form id="nf">
@@ -373,14 +373,14 @@ function openNotifyModal(m) {
           title:f.title.value, message:f.message.value });
         close();
         toast(r.status === 'PENDING_APPROVAL' ? '대외 발송 건으로 관리자 승인 대기열에 등록되었습니다.' : '알림이 발송되었습니다.',
-          { type:'ok', title:`FR-07 · ${r.status}` });
+          { type:'ok', title: r.status === 'PENDING_APPROVAL' ? '승인 요청 완료' : '발송 완료' });
       } catch (err) { toast(err.message, { type:'err', title:`오류 ${err.status} · ${err.code}` }); }
     }}]});
   return md;
 }
 
 function openFeedback(m, isRelevant) {
-  modal({ title: isRelevant ? '실제 영향 확인' : '오탐 신고 (FR-09)', body:`
+  modal({ title: isRelevant ? '실제 영향 확인' : '오탐 신고', body:`
     <p style="font-size:14.5px;color:var(--fg-2);margin:0 0 14px">
       ${isRelevant ? '이 매칭이 실제 지연·차질로 이어졌다면 실제 지연 일수를 입력해 주세요.'
                    : '이 매칭이 실제로는 영향이 없었던 경우 사유를 남겨 주세요. 매칭 규칙 개선에 사용됩니다.'}</p>
@@ -457,7 +457,7 @@ export async function eventDetail({ params }) {
             ${e.reviewNote ? `<dt>검토 메모</dt><dd class="muted">${esc(e.reviewNote)}</dd>` : ''}</dl>
         </div></div>
 
-      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 지역 (FR-02)</h3><span class="sp"></span>
+      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 지역</h3><span class="sp"></span>
         <span class="meta">${e.areas.length}개 지역</span></div><div class="bd flush">
         <table><thead><tr><th style="width:115px">구분</th><th>지역</th><th style="width:115px">영향도</th>
           <th style="width:127px">예상 지연</th><th style="width:115px">내 화물</th></tr></thead><tbody>
@@ -468,7 +468,7 @@ export async function eventDetail({ params }) {
             <td>${cnt ? `<span class="badge g-HIGH"><i></i>${cnt}건</span>` : '<span class="muted">-</span>'}</td></tr>`; }).join('')}
         </tbody></table></div></div>
 
-      <div class="card"><div class="hd"><h3>내 화물 영향 건 (FR-03)</h3><span class="sp"></span>
+      <div class="card"><div class="hd"><h3>내 화물 영향 건</h3><span class="sp"></span>
         <span class="meta">${e.matches.length}건</span></div><div class="bd flush">
         ${e.matches.length ? `<table><thead><tr><th style="width:79px">점수</th><th>화물</th>
           <th style="width:168px">매칭 근거</th><th style="width:115px">노출일</th><th style="width:106px">상태</th></tr></thead><tbody>
@@ -483,7 +483,7 @@ export async function eventDetail({ params }) {
       </div></div>
     </div>
     <div>
-      <div class="card"><div class="hd"><h3>수집 원문 (FR-01)</h3></div><div class="bd">
+      <div class="card"><div class="hd"><h3>수집 원문</h3></div><div class="bd">
         ${e.source ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
             <span class="chip info">${esc(e.source.sourceName)}</span>
             <span class="chip">${esc(e.source.sourceType)}</span>
@@ -667,7 +667,7 @@ export async function shipmentNew() {
             <b>${esc(p.originPort.nameKo)} → ${esc(p.destinationPort.nameKo)}</b> · 약 ${p.transitDays}일 · ${num(p.distanceNm)} NM
             (평균 ${p.assumedSpeedKn}kn 가정) · 도착 예정 <b>${date(p.eta)}</b></div></div>
             ${p.routePoints.length ? `<div class="card"><div class="hd"><h3>통과 예정 해상 요충지</h3><span class="sp"></span>
-              <span class="meta">FR-03 매칭 기준 데이터</span></div><div class="bd flush">
+              <span class="meta">매칭 기준 데이터</span></div><div class="bd flush">
               <table><thead><tr><th style="width:60px">순번</th><th>요충지</th><th style="width:156px">통과 예정일</th></tr></thead><tbody>
               ${p.routePoints.map(r => `<tr><td class="mono">${r.seq}</td><td>${esc(r.nameKo)}
                 <span class="muted mono" style="font-size:12.5px">${esc(r.code)}</span></td>
@@ -749,7 +749,7 @@ export async function shipmentDetail({ params }) {
           <div class="vl">${buf == null ? '-' : buf}<span style="font-size:16px">일</span></div><div class="sx">ETA 대비 고객 납기</div></div>
       </div>
 
-      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 건 (FR-03 매칭 결과)</h3><span class="sp"></span>
+      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 건</h3><span class="sp"></span>
         <span class="meta">${s.matches.length}건</span></div><div class="bd flush">
         ${s.matches.length ? `<table><thead><tr><th style="width:79px">점수</th><th>리스크 이벤트</th>
           <th style="width:180px">매칭 근거</th><th style="width:115px">노출일</th><th style="width:115px">상태</th></tr></thead><tbody>

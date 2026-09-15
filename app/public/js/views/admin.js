@@ -23,7 +23,7 @@ export async function overview() {
     </div>
 
     <div class="cols" style="margin-bottom:16px">
-      <div class="card"><div class="hd"><h3>리스크 수집 파이프라인 (FR-01 → FR-02 → FR-03)</h3><span class="sp"></span>
+      <div class="card"><div class="hd"><h3>리스크 수집 파이프라인</h3><span class="sp"></span>
         <span class="meta">최종 수집 ${dt(p.lastCollectedAt)}</span></div>
         <div class="bd">
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;align-items:stretch;margin-bottom:16px">
@@ -139,7 +139,7 @@ export async function eventReview({ params }) {
     ${e.status === 'DISMISSED' ? `<div class="banner err"><span class="ic">⛔</span><div>
       <b>기각된 이벤트입니다.</b> ${esc(e.reviewNote || '')}</div></div>` : ''}
     <div class="cols"><div>
-      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>LLM 정형화 결과 (FR-02) — 수정 가능</h3><span class="sp"></span>
+      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>LLM 정형화 결과 — 수정 가능</h3><span class="sp"></span>
         <span class="meta">${esc(e.llmModel || '')} · ${dt(e.llmExtractedAt)}</span></div><div class="bd">
         <form id="ef">
           <div class="field" data-field="title"><label>제목</label><input name="title" value="${esc(e.title)}"></div>
@@ -162,7 +162,7 @@ export async function eventReview({ params }) {
         </form>
       </div></div>
 
-      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 지역 매핑 (FR-02 → FR-03)</h3><span class="sp"></span>
+      <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 지역 매핑</h3><span class="sp"></span>
         <button class="btn sm" id="add-area" type="button">＋ 지역 추가</button></div><div class="bd flush">
         <table><thead><tr><th style="width:156px">구분</th><th>지역</th><th style="width:120px">영향도(1~5)</th>
           <th style="width:132px">예상 지연(일)</th><th style="width:89px"></th></tr></thead>
@@ -172,7 +172,7 @@ export async function eventReview({ params }) {
           <button class="btn" id="rematch" type="button">재매칭만 실행</button></div>
       </div></div>
 
-      <div class="card"><div class="hd"><h3>이 이벤트로 산출된 영향 건 (FR-03)</h3><span class="sp"></span>
+      <div class="card"><div class="hd"><h3>이 이벤트로 산출된 영향 건</h3><span class="sp"></span>
         <span class="meta">${e.matches.length}건 · 전체 테넌트</span></div><div class="bd flush" id="mtable">
         ${matchTable(e.matches)}</div></div>
     </div>
@@ -192,7 +192,7 @@ export async function eventReview({ params }) {
             <dt>발행 일시</dt><dd class="mono">${dt(e.publishedAt)}</dd></dl>
         </div></div>
 
-      <div class="card"><div class="hd"><h3>수집 원문 (FR-01)</h3></div><div class="bd">
+      <div class="card"><div class="hd"><h3>수집 원문</h3></div><div class="bd">
         ${e.source ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
             <span class="chip info">${esc(e.source.sourceName)}</span><span class="chip">${esc(e.source.sourceType)}</span>
             <span class="chip">신뢰가중치 ${e.source.trustWeight}</span></div>
@@ -254,7 +254,7 @@ export async function eventReview({ params }) {
         try {
           const r = await api.post(`/admin/risk-events/${e.eventId}/rematch`);
           page.querySelector('#mtable').innerHTML = matchTable(r.matches);
-          toast(`재매칭 완료: ${r.before}건 → ${r.after}건`, { type:'ok', title:'FR-03' });
+          toast(`재매칭 완료: ${r.before}건 → ${r.after}건`, { type:'ok', title:'영향 건 재산출' });
         } catch (err) { toast(err.message, { type:'err' }); }
       };
 
@@ -275,7 +275,7 @@ export async function eventReview({ params }) {
       const ra = page.querySelector('#reanalyze');
       if (ra) ra.onclick = async () => {
         try { const r = await api.post(`/admin/feeds/${e.source.rawFeedId}/analyze`);
-          toast(r.message, { type:'ok', title:'FR-02 LLM 재분석' }); location.reload();
+          toast(r.message, { type:'ok', title:'LLM 재분석' }); location.reload();
         } catch (err) { toast(err.message, { type:'err' }); }
       };
     }};
@@ -295,7 +295,7 @@ function matchTable(matches) {
 
 /* ═══════════ 수집 원문 ═══════════ */
 export async function feedList() {
-  return { title:'수집 원문', crumb:'FR-01 수집 결과 원본',
+  return { title:'수집 원문', crumb:'수집 결과 원본',
     html:`<div class="toolbar"><div class="seg" id="s-seg">
         <button data-s="" class="on">전체</button><button data-s="PROCESSED">정형화 완료</button>
         <button data-s="PENDING">미처리</button><button data-s="DISCARDED">폐기</button></div></div>
@@ -326,7 +326,7 @@ export async function feedList() {
         page.querySelectorAll('[data-an]').forEach(b => b.onclick = async () => {
           b.disabled = true; b.innerHTML = '<span class="spin"></span>';
           try { const r2 = await api.post(`/admin/feeds/${b.dataset.an}/analyze`);
-            toast(r2.message, { type:'ok', title:'FR-02' }); location.hash = `#/admin/events/${r2.event.eventId}`;
+            toast(r2.message, { type:'ok', title:'LLM 정형화' }); location.hash = `#/admin/events/${r2.event.eventId}`;
           } catch (err) { toast(err.message, { type:'err' }); b.disabled = false; b.textContent = 'LLM 분석'; }
         });
       }
@@ -337,7 +337,7 @@ export async function feedList() {
 /* ═══════════ 수집 소스 관리 (FR-08) ═══════════ */
 export async function sources() {
   const r = await api.get('/admin/sources');
-  return { title:'수집 소스 관리', crumb:'FR-08 소스 · 신뢰가중치 설정',
+  return { title:'수집 소스 관리', crumb:'소스 · 신뢰가중치 설정',
     html:`<div class="toolbar"><div class="sp"></div><button class="btn primary" id="add">＋ 소스 추가</button></div>
       <div class="banner info"><span class="ic">ℹ</span><div>
         <b>신뢰가중치</b>는 리스크 점수의 신뢰도 계수에 직접 곱해집니다. 값을 변경하면 전체 영향 건이 즉시 재계산됩니다.</div></div>
@@ -394,7 +394,7 @@ export async function sources() {
 /* ═══════════ 임계값 설정 (FR-08) ═══════════ */
 export async function thresholds() {
   const r = await api.get('/admin/thresholds');
-  return { title:'임계값 · 기준 설정', crumb:'FR-08 등급 기준 및 알림 정책',
+  return { title:'임계값 · 기준 설정', crumb:'등급 기준 및 알림 정책',
     html:`<div style="max-width:880px">
       <div class="banner info"><span class="ic">ℹ</span><div>
         등급 구간은 <b>0~100 사이에서 빈틈 없이 연속</b>되어야 합니다. 저장하면 전체 영향 건의 등급이 즉시 재계산됩니다.</div></div>
@@ -546,7 +546,7 @@ export async function shipmentApproval() {
 
 /* ═══════════ 알림 발송 승인 (FR-07) ═══════════ */
 export async function notificationApproval() {
-  return { title:'알림 발송 승인', crumb:'FR-07 대외 발송 건 승인',
+  return { title:'알림 발송 승인', crumb:'대외 발송 건 승인',
     html:`<div class="toolbar"><div class="seg" id="s-seg">
         <button data-s="PENDING_APPROVAL" class="on">승인 대기</button><button data-s="">전체</button>
         <button data-s="SENT">발송 완료</button><button data-s="FAILED,REJECTED">실패·반려</button></div></div>
@@ -598,7 +598,7 @@ export async function notificationApproval() {
 /* ═══════════ 매칭 피드백 (FR-09) ═══════════ */
 export async function feedback() {
   const f = await api.get('/admin/feedback-summary');
-  return { title:'매칭 피드백', crumb:'FR-09 오탐 관리 및 매칭 정확도',
+  return { title:'매칭 피드백', crumb:'오탐 관리 및 매칭 정확도',
     html:`<div class="kpis">
         <div class="kpi acc"><div class="lb">매칭 정확도 (Precision)</div><div class="vl">${f.precision == null ? '-' : pct(f.precision)}</div>
           <div class="sx">피드백 ${f.total}건 기준</div></div>
