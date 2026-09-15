@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SONAR 전체 UI 흐름도</title>
+<style>
+  :root{
+    --ink:#1a2330; --ink-2:#55637a; --ink-3:#8a97ab;
+    --line:#dfe5ee; --bg:#fff; --panel:#f7f9fc;
+    --common:#64748b; --op:#0e7f93; --op-soft:#e6f6f9;
+    --ad:#c2610d; --ad-soft:#fdf1e3; --exc:#c2334d; --exc-soft:#fdeef1;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef1f6;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",-apple-system,sans-serif;color:var(--ink)}
+  .page{width:1600px;min-height:900px;margin:0 auto 26px;background:var(--bg);padding:32px 40px 26px;
+        display:flex;flex-direction:column}
+  .page .grow{flex:1}
+  @media print{ .page{margin:0;page-break-after:always} body{background:#fff} }
+
+  .head{display:flex;align-items:flex-end;gap:16px;border-bottom:3px solid var(--ink);padding-bottom:8px;margin-bottom:5px}
+  .head .no{background:var(--op);color:#fff;font-weight:700;font-size:15px;padding:5px 12px;border-radius:14px 14px 14px 3px}
+  .head h1{margin:0;font-size:26px;letter-spacing:-.02em}
+  .head .sp{flex:1}
+  .head .meta{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);text-align:right;line-height:1.7}
+
+  .legend{display:flex;gap:16px;align-items:center;font-size:11px;color:var(--ink-2);margin:8px 0 10px}
+  .legend b{font-weight:600;color:var(--ink)}
+  .legend .k{display:flex;align-items:center;gap:6px}
+  .legend .sw{width:13px;height:13px;border-radius:3px;border:1px solid var(--line)}
+
+  .panel{border:1px solid var(--line);border-radius:9px;margin-bottom:10px;overflow:hidden;background:var(--bg)}
+  .panel > .ph{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .panel > .ph .dot{width:9px;height:9px;border-radius:50%}
+  .panel > .ph h2{margin:0;font-size:14.5px;font-weight:700}
+  .panel > .ph .en{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+  .panel > .ph .sp{flex:1}
+  .panel > .ph .cnt{font-size:11px;color:var(--ink-2);background:#fff;border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+  .panel > .pb{padding:11px 14px}
+  .p-common > .ph{border-top:3px solid var(--common)}
+  .p-op     > .ph{border-top:3px solid var(--op)}
+  .p-ad     > .ph{border-top:3px solid var(--ad)}
+  .p-exc    > .ph{border-top:3px solid var(--exc)}
+
+  .lane{margin-bottom:9px}
+  .lane:last-child{margin-bottom:0}
+  .lane .lt{font-size:11px;font-weight:700;color:var(--ink-2);letter-spacing:.04em;margin-bottom:5px;display:flex;align-items:center;gap:7px}
+  .lane .lt i{width:3px;height:12px;border-radius:2px;background:var(--ink-3);display:inline-block}
+
+  .row{display:flex;align-items:stretch;gap:9px;flex-wrap:wrap}
+  .box{background:#fff;border:1px solid var(--line);border-radius:6px;padding:7px 11px;min-width:128px;
+       box-shadow:0 1px 2px rgba(20,30,50,.05)}
+  .box .nm{font-size:12.5px;font-weight:600;line-height:1.3;white-space:nowrap}
+  .box .id{font-family:var(--mono);font-size:9.5px;color:var(--ink-3);margin-top:2px}
+  .box.entry{border-color:var(--exc);background:var(--exc-soft)}
+  .box.entry .nm{color:var(--exc)}
+  .box.op{border-color:#a9d8e1;background:var(--op-soft)}
+  .box.ad{border-color:#f0cfa6;background:var(--ad-soft)}
+  .box.shared{border-style:dashed;background:#fafbfd}
+  .box.wide{min-width:180px}
+  .arrow{align-self:center;color:var(--ink-3);font-size:15px;padding:0 1px}
+
+  .sub{margin-top:5px;padding-left:22px;position:relative}
+  .sub::before{content:"";position:absolute;left:8px;top:-4px;bottom:14px;width:1px;border-left:1px dashed #c6d0de}
+  .subrow{display:flex;align-items:center;gap:9px;margin-bottom:5px;position:relative}
+  .subrow:last-child{margin-bottom:0}
+  .subrow::before{content:"";position:absolute;left:-14px;top:50%;width:12px;height:1px;border-top:1px dashed #c6d0de}
+  .subrow .box{min-width:0}
+  .note{font-size:11.5px;color:var(--ink-2);align-self:center;line-height:1.5}
+  .note b{color:var(--ink);font-weight:600}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+
+  .handoff{border:1px solid #cfd8e6;border-radius:9px;background:#f9fbfe;padding:16px 18px;margin-bottom:14px}
+  .handoff h3{margin:0 0 11px;font-size:13px;display:flex;align-items:center;gap:8px}
+  .handoff h3 span{font-weight:400;color:var(--ink-3);font-size:11.5px}
+  .hf{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px dashed #d8e0ec;flex-wrap:wrap}
+  .hf:first-of-type{border-top:none}
+  .hf .n{font-family:var(--mono);font-size:10.5px;color:#fff;background:var(--ink-2);width:17px;height:17px;border-radius:50%;
+         display:grid;place-items:center;flex:none}
+  .hf .step{display:flex;align-items:center;gap:6px;font-size:12px}
+  .hf .tag{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--line);background:#fff}
+  .hf .tag.o{color:var(--op);border-color:#a9d8e1;background:var(--op-soft)}
+  .hf .tag.a{color:var(--ad);border-color:#f0cfa6;background:var(--ad-soft)}
+  .hf .to{color:var(--ink-3);font-size:13px}
+
+  .exc{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+  .exc .e{border:1px solid var(--line);border-left:3px solid var(--exc);border-radius:6px;padding:12px 14px;background:#fff}
+  .exc .e .c{font-family:var(--mono);font-size:10px;color:var(--exc);font-weight:700}
+  .exc .e .t{font-size:12px;font-weight:600;margin:3px 0 2px}
+  .exc .e .d{font-size:11px;color:var(--ink-3);line-height:1.45}
+
+  .foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;gap:28px;font-size:11.5px;color:var(--ink-2)}
+  .foot b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="head">
+    <span class="no">04</span>
+    <h1>전체 UI 흐름도</h1>
+    <div class="sp"></div>
+    <div class="meta">SONAR · 해상물류 공급망 리스크 레이더<br>화면 21 · 액터 2 · 예외 7</div>
+  </div>
+
+  <div class="legend">
+    <span class="k"><span class="sw" style="background:var(--exc-soft);border-color:var(--exc)"></span> 진입 화면</span>
+    <span class="k"><span class="sw" style="background:var(--op-soft);border-color:#a9d8e1"></span> 담당자 전용</span>
+    <span class="k"><span class="sw" style="background:var(--ad-soft);border-color:#f0cfa6"></span> 관리자 전용</span>
+    <span class="k"><span class="sw" style="border-style:dashed;background:#fafbfd"></span> 두 액터 공용</span>
+    <span class="k"><b>→</b> 화면 이동</span>
+    <span class="k"><b>└</b> 하위 동작 · 모달</span>
+  </div>
+
+  <!-- 공통 -->
+  <div class="panel p-common">
+    <div class="ph"><span class="dot" style="background:var(--common)"></span>
+      <h2>0. 공통</h2><span class="en">Common</span>
+      <span class="sp"></span><span class="cnt">2 화면</span></div>
+    <div class="pb">
+      <div class="row">
+        <div class="box entry"><div class="nm">로그인</div><div class="id">01_login</div></div>
+        <span class="arrow">→</span>
+        <div class="box"><div class="nm">권한별 분기</div><div class="id">role routing</div></div>
+        <span class="arrow">→</span>
+        <div class="box op"><div class="nm">리스크 레이더</div><div class="id">10_radar &nbsp;담당자</div></div>
+        <div class="box ad"><div class="nm">운영 대시보드</div><div class="id">20_admin_overview &nbsp;관리자</div></div>
+        <span class="note" style="margin-left:14px">로그인 시 <b>역할(OPERATOR / ADMIN)</b>에 따라 진입 화면이 갈립니다.</span>
+      </div>
+      <div class="sub">
+        <div class="subrow"><div class="box"><div class="nm">회원가입 신청</div><div class="id">02_signup</div></div>
+          <span class="note">회사 선택 또는 신규 회사 등록 → 상태 <b>PENDING</b> 으로 접수 → 관리자 승인 후 로그인 가능</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <!-- 담당자 -->
+    <div class="panel p-op">
+      <div class="ph"><span class="dot" style="background:var(--op)"></span>
+        <h2>1. 화물 운영 담당자</h2><span class="en">Operator</span>
+        <span class="sp"></span><span class="cnt">9 화면</span></div>
+      <div class="pb">
+
+        <div class="lane">
+          <div class="lt"><i></i>위험 건 확인 및 대응</div>
+          <div class="row">
+            <div class="box op"><div class="nm">리스크 레이더</div><div class="id">10_radar</div></div>
+            <span class="arrow">→</span>
+            <div class="box op"><div class="nm">영향 건 목록</div><div class="id">11_match_list</div></div>
+            <span class="arrow">→</span>
+            <div class="box op"><div class="nm">영향 건 상세</div><div class="id">12_match_detail</div></div>
+          </div>
+          <div class="sub">
+            <div class="subrow"><div class="box"><div class="nm">대응 시나리오 · 조치 등록</div><div class="id">12a_action_create</div></div></div>
+            <div class="subrow"><div class="box"><div class="nm">알림 발송 요청</div><div class="id">12b_notify_request · 모달</div></div></div>
+            <div class="subrow"><div class="box"><div class="nm">매칭 피드백 · 오탐 신고</div><div class="id">12c_feedback · 모달</div></div></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>리스크 원인 확인</div>
+          <div class="row">
+            <div class="box op"><div class="nm">리스크 이벤트 목록</div><div class="id">13_event_list</div></div>
+            <span class="arrow">→</span>
+            <div class="box op wide"><div class="nm">리스크 이벤트 상세</div><div class="id">14_event_detail</div></div>
+          </div>
+          <div class="sub">
+            <div class="subrow"><div class="box"><div class="nm">수집 원문 대조 · 영향 지역 확인</div><div class="id">14a_source_compare</div></div></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>담당 화물 관리</div>
+          <div class="row">
+            <div class="box op"><div class="nm">내 화물 목록</div><div class="id">15_shipment_list</div></div>
+            <span class="arrow">→</span>
+            <div class="box op"><div class="nm">화물 상세</div><div class="id">17_shipment_detail</div></div>
+          </div>
+          <div class="sub">
+            <div class="subrow"><div class="box"><div class="nm">화물 등록 (3단계)</div><div class="id">16_shipment_create</div></div>
+              <span class="arrow">→</span>
+              <div class="box"><div class="nm">경유 요충지 자동 산출</div><div class="id">16a_route_preview</div></div></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>알림</div>
+          <div class="row">
+            <div class="box op"><div class="nm">알림 센터</div><div class="id">18_notification_center</div></div>
+            <span class="arrow">→</span>
+            <div class="box shared"><div class="nm">영향 건 상세</div><div class="id">12_match_detail</div></div>
+            <span class="note" style="margin-left:6px">알림 클릭 시 해당 건으로 이동</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 관리자 -->
+    <div class="panel p-ad">
+      <div class="ph"><span class="dot" style="background:var(--ad)"></span>
+        <h2>2. 시스템 관리자</h2><span class="en">Admin</span>
+        <span class="sp"></span><span class="cnt">10 화면</span></div>
+      <div class="pb">
+
+        <div class="lane">
+          <div class="lt"><i></i>전체 현황 조회</div>
+          <div class="row">
+            <div class="box ad"><div class="nm">운영 대시보드</div><div class="id">20_admin_overview</div></div>
+            <span class="arrow">→</span>
+            <div class="box shared"><div class="nm">전체 리스크 레이더</div><div class="id">10_radar · 전체 테넌트</div></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>리스크 파이프라인 모니터링</div>
+          <div class="row">
+            <div class="box ad"><div class="nm">수집 원문</div><div class="id">24_feed_list</div></div>
+            <span class="arrow">→</span>
+            <div class="box ad"><div class="nm">이벤트 모니터링</div><div class="id">22_event_monitor</div></div>
+            <span class="arrow">→</span>
+            <div class="box ad"><div class="nm">이벤트 검토</div><div class="id">23_event_review</div></div>
+          </div>
+          <div class="sub">
+            <div class="subrow"><div class="box"><div class="nm">LLM 정형화 결과 수정</div><div class="id">23a_extract_edit</div></div></div>
+            <div class="subrow"><div class="box"><div class="nm">영향 지역 매핑 · 재매칭</div><div class="id">23b_area_mapping</div></div></div>
+            <div class="subrow"><div class="box"><div class="nm">발행 / 기각</div><div class="id">23c_publish_dismiss</div></div>
+              <span class="note">발행해야 담당자 화면에 노출</span></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>기준 설정</div>
+          <div class="row">
+            <div class="box ad"><div class="nm">수집 소스 관리</div><div class="id">25_source_config</div></div>
+            <div class="box ad"><div class="nm">임계값 · 기준 설정</div><div class="id">26_threshold_config</div></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>승인 처리</div>
+          <div class="row">
+            <div class="box ad"><div class="nm">회원 관리</div><div class="id">27_user_approval</div></div>
+            <div class="box ad"><div class="nm">화물 등록 승인</div><div class="id">28_shipment_approval</div></div>
+            <div class="box ad"><div class="nm">알림 발송 승인</div><div class="id">29_notification_approval</div></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lt"><i></i>품질 · 이력</div>
+          <div class="row">
+            <div class="box ad"><div class="nm">매칭 피드백</div><div class="id">30_feedback_summary</div></div>
+            <div class="box ad"><div class="nm">감사 로그</div><div class="id">31_audit_log</div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+    <div class="grow"></div>
+    <div class="foot">
+      <span><b>화면 ID 규칙</b> &nbsp;{순번}_{화면명} — API 명세 · ERD 문서와 동일한 식별자를 사용</span>
+      <span><b>공용 화면</b> &nbsp;10_radar 는 담당자(자사 화물) / 관리자(전체 테넌트)로 조회 범위만 분기</span>
+    </div>
+  </div>
+
+  <!-- ══════════ PAGE 2 ══════════ -->
+  <div class="page">
+    <div class="head">
+      <span class="no">05</span>
+      <h1>화면 연계 및 예외 처리</h1>
+      <div class="sp"></div>
+      <div class="meta">SONAR · 해상물류 공급망 리스크 레이더<br>액터 간 연계 5 · 예외 시나리오 7</div>
+    </div>
+
+  <!-- 액터 간 연계 -->
+  <div class="handoff">
+    <h3>액터 간 연계 흐름 <span>— 담당자 화면과 관리자 화면이 맞물리는 지점</span></h3>
+
+    <div class="hf"><span class="n">1</span>
+      <span class="step"><span class="tag o">02_signup</span> 가입 신청</span><span class="to">→</span>
+      <span class="step"><span class="tag a">27_user_approval</span> 관리자 승인</span><span class="to">→</span>
+      <span class="step"><span class="tag o">01_login</span> 로그인 가능</span>
+    </div>
+
+    <div class="hf"><span class="n">2</span>
+      <span class="step"><span class="tag o">16_shipment_create</span> 화물 등록</span><span class="to">→</span>
+      <span class="step"><span class="tag a">28_shipment_approval</span> 등록 승인</span><span class="to">→</span>
+      <span class="step"><span class="tag o">10_radar</span> 정식 모니터링 대상 전환</span>
+      <span class="note" style="margin-left:8px">승인 전에도 <b>잠정 분석 결과</b>는 즉시 지도에 표시 (점선 마커)</span>
+    </div>
+
+    <div class="hf"><span class="n">3</span>
+      <span class="step"><span class="tag a">23_event_review</span> 이벤트 발행</span><span class="to">→</span>
+      <span class="step">매칭 엔진 재실행</span><span class="to">→</span>
+      <span class="step"><span class="tag o">10_radar</span> · <span class="tag o">11_match_list</span> 영향 건 산출</span>
+    </div>
+
+    <div class="hf"><span class="n">4</span>
+      <span class="step"><span class="tag o">12b_notify_request</span> 대외 알림 요청</span><span class="to">→</span>
+      <span class="step"><span class="tag a">29_notification_approval</span> 발송 승인</span><span class="to">→</span>
+      <span class="step"><span class="tag o">18_notification_center</span> 발송 완료</span>
+      <span class="note" style="margin-left:8px">사내 알림은 임계값 초과 시 <b>승인 없이 자동 발송</b></span>
+    </div>
+
+    <div class="hf"><span class="n">5</span>
+      <span class="step"><span class="tag o">12c_feedback</span> 오탐 신고</span><span class="to">→</span>
+      <span class="step"><span class="tag a">30_feedback_summary</span> 오탐율 집계</span><span class="to">→</span>
+      <span class="step"><span class="tag a">26_threshold_config</span> 기준 보정</span>
+    </div>
+  </div>
+
+  <!-- 예외 -->
+  <div class="panel p-exc">
+    <div class="ph"><span class="dot" style="background:var(--exc)"></span>
+      <h2>예외 / 오류 시나리오</h2><span class="en">Exception</span>
+      <span class="sp"></span><span class="cnt">7 케이스</span></div>
+    <div class="pb">
+      <div class="exc">
+        <div class="e"><div class="c">E-01 · 401</div><div class="t">로그인 실패</div><div class="d">INVALID_CREDENTIALS<br>비밀번호 필드 강조 + 사유 배너</div></div>
+        <div class="e"><div class="c">E-02 · 403</div><div class="t">승인 대기 계정</div><div class="d">ACCOUNT_PENDING<br>로그인 차단 + 대기 안내</div></div>
+        <div class="e"><div class="c">E-03 · 403</div><div class="t">권한 없음</div><div class="d">FORBIDDEN<br>담당자가 관리자 화면 접근 시</div></div>
+        <div class="e"><div class="c">E-04 · 400</div><div class="t">입력 검증 실패</div><div class="d">VALIDATION_ERROR<br>납기일 &lt; ETA 등, 해당 필드 표시</div></div>
+        <div class="e"><div class="c">E-05 · 409</div><div class="t">상태 충돌</div><div class="d">INVALID_STATE<br>이미 처리된 승인 건 재처리</div></div>
+        <div class="e"><div class="c">E-06 · 409</div><div class="t">발행 조건 미충족</div><div class="d">NO_IMPACT_AREA<br>영향 지역 없는 이벤트 발행 시도</div></div>
+        <div class="e"><div class="c">E-07 · —</div><div class="t">지도 로드 실패</div><div class="d">타일 로드 실패 시<br>좌표 기준 뷰로 자동 전환</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grow"></div>
+  <div class="foot">
+    <span><b>예외 응답 형식</b> &nbsp;{ error: { code, message, details[], timestamp } } — 모든 화면이 동일 규약으로 처리</span>
+    <span><b>표기</b> &nbsp;E-0n · HTTP 상태코드</span>
+  </div>
+
+</div>
+</body>
+</html>
