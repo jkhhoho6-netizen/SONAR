@@ -1,0 +1,8 @@
+{
+  "name": "sonar-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SONAR - 해상물류 공급망 리스크 레이더 (설계 검증용 프로토타입)",
+  "scripts": { "start": "node src/server.js", "dev": "node --watch src/server.js" }
+}

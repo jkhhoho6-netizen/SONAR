@@ -1,0 +1,95 @@
+// SONAR - 마스터 데이터 (항만 / 해상 요충지 / 선사 / 대응 플레이북)
+
+export const ports = [
+  { portId: 'P001', unlocode: 'KRPUS', nameKo: '부산',        nameEn: 'Busan',        countryCode: 'KR', regionCode: 'NEA', lat: 35.10,  lon: 129.04 },
+  { portId: 'P002', unlocode: 'KRINC', nameKo: '인천',        nameEn: 'Incheon',      countryCode: 'KR', regionCode: 'NEA', lat: 37.45,  lon: 126.60 },
+  { portId: 'P003', unlocode: 'CNSHA', nameKo: '상하이',      nameEn: 'Shanghai',     countryCode: 'CN', regionCode: 'NEA', lat: 31.23,  lon: 121.47 },
+  { portId: 'P004', unlocode: 'CNNGB', nameKo: '닝보',        nameEn: 'Ningbo',       countryCode: 'CN', regionCode: 'NEA', lat: 29.87,  lon: 121.55 },
+  { portId: 'P005', unlocode: 'CNSZX', nameKo: '옌톈(선전)',  nameEn: 'Yantian',      countryCode: 'CN', regionCode: 'SEA', lat: 22.57,  lon: 114.27 },
+  { portId: 'P006', unlocode: 'HKHKG', nameKo: '홍콩',        nameEn: 'Hong Kong',    countryCode: 'HK', regionCode: 'SEA', lat: 22.30,  lon: 114.17 },
+  { portId: 'P007', unlocode: 'TWKHH', nameKo: '가오슝',      nameEn: 'Kaohsiung',    countryCode: 'TW', regionCode: 'NEA', lat: 22.61,  lon: 120.28 },
+  { portId: 'P008', unlocode: 'JPTYO', nameKo: '도쿄',        nameEn: 'Tokyo',        countryCode: 'JP', regionCode: 'NEA', lat: 35.62,  lon: 139.78 },
+  { portId: 'P009', unlocode: 'VNSGN', nameKo: '호치민(깟라이)', nameEn: 'Cat Lai',   countryCode: 'VN', regionCode: 'SEA', lat: 10.77,  lon: 106.75 },
+  { portId: 'P010', unlocode: 'SGSIN', nameKo: '싱가포르',    nameEn: 'Singapore',    countryCode: 'SG', regionCode: 'SEA', lat: 1.26,   lon: 103.83 },
+  { portId: 'P011', unlocode: 'MYPKG', nameKo: '포트클랑',    nameEn: 'Port Klang',   countryCode: 'MY', regionCode: 'SEA', lat: 3.00,   lon: 101.39 },
+  { portId: 'P012', unlocode: 'INNSA', nameKo: '나바셰바',    nameEn: 'Nhava Sheva',  countryCode: 'IN', regionCode: 'SAS', lat: 18.95,  lon: 72.95  },
+  { portId: 'P013', unlocode: 'AEJEA', nameKo: '제벨알리',    nameEn: 'Jebel Ali',    countryCode: 'AE', regionCode: 'MEA', lat: 25.01,  lon: 55.06  },
+  { portId: 'P014', unlocode: 'IRBND', nameKo: '반다르아바스', nameEn: 'Bandar Abbas', countryCode: 'IR', regionCode: 'MEA', lat: 27.15,  lon: 56.21  },
+  { portId: 'P015', unlocode: 'SAJED', nameKo: '제다',        nameEn: 'Jeddah',       countryCode: 'SA', regionCode: 'MEA', lat: 21.48,  lon: 39.19  },
+  { portId: 'P016', unlocode: 'EGPSD', nameKo: '포트사이드',  nameEn: 'Port Said',    countryCode: 'EG', regionCode: 'MEA', lat: 31.25,  lon: 32.30  },
+  { portId: 'P017', unlocode: 'NLRTM', nameKo: '로테르담',    nameEn: 'Rotterdam',    countryCode: 'NL', regionCode: 'EUR', lat: 51.92,  lon: 4.48   },
+  { portId: 'P018', unlocode: 'DEHAM', nameKo: '함부르크',    nameEn: 'Hamburg',      countryCode: 'DE', regionCode: 'EUR', lat: 53.54,  lon: 9.98   },
+  { portId: 'P019', unlocode: 'BEANR', nameKo: '안트베르펜',  nameEn: 'Antwerp',      countryCode: 'BE', regionCode: 'EUR', lat: 51.26,  lon: 4.40   },
+  { portId: 'P020', unlocode: 'ESVLC', nameKo: '발렌시아',    nameEn: 'Valencia',     countryCode: 'ES', regionCode: 'EUR', lat: 39.45,  lon: -0.33  },
+  { portId: 'P021', unlocode: 'USLAX', nameKo: '로스앤젤레스', nameEn: 'Los Angeles', countryCode: 'US', regionCode: 'NAM', lat: 33.73,  lon: -118.26 },
+  { portId: 'P022', unlocode: 'USLGB', nameKo: '롱비치',      nameEn: 'Long Beach',   countryCode: 'US', regionCode: 'NAM', lat: 33.75,  lon: -118.19 },
+  { portId: 'P023', unlocode: 'USNYC', nameKo: '뉴욕',        nameEn: 'New York',     countryCode: 'US', regionCode: 'NAM', lat: 40.68,  lon: -74.02 },
+  { portId: 'P024', unlocode: 'PABLB', nameKo: '발보아',      nameEn: 'Balboa',       countryCode: 'PA', regionCode: 'LAM', lat: 8.95,   lon: -79.57 },
+  { portId: 'P025', unlocode: 'BRSSZ', nameKo: '산투스',      nameEn: 'Santos',       countryCode: 'BR', regionCode: 'LAM', lat: -23.96, lon: -46.33 },
+  { portId: 'P026', unlocode: 'AUSYD', nameKo: '시드니',      nameEn: 'Sydney',       countryCode: 'AU', regionCode: 'OCE', lat: -33.86, lon: 151.21 }
+];
+
+export const chokePoints = [
+  { chokePointId: 'CP01', code: 'HORMUZ',  nameKo: '호르무즈 해협',   nameEn: 'Strait of Hormuz',    lat: 26.57,  lon: 56.25,  radiusKm: 130 },
+  { chokePointId: 'CP02', code: 'BAB',     nameKo: '바브엘만데브 해협', nameEn: 'Bab el-Mandeb',     lat: 12.58,  lon: 43.33,  radiusKm: 120 },
+  { chokePointId: 'CP03', code: 'REDSEA',  nameKo: '홍해 항로',       nameEn: 'Red Sea Corridor',   lat: 20.00,  lon: 38.50,  radiusKm: 420 },
+  { chokePointId: 'CP04', code: 'SUEZ',    nameKo: '수에즈 운하',     nameEn: 'Suez Canal',         lat: 30.42,  lon: 32.35,  radiusKm: 90  },
+  { chokePointId: 'CP05', code: 'MALACCA', nameKo: '말라카 해협',     nameEn: 'Strait of Malacca',  lat: 2.50,   lon: 101.00, radiusKm: 220 },
+  { chokePointId: 'CP06', code: 'PANAMA',  nameKo: '파나마 운하',     nameEn: 'Panama Canal',       lat: 9.08,   lon: -79.68, radiusKm: 80  },
+  { chokePointId: 'CP07', code: 'GIB',     nameKo: '지브롤터 해협',   nameEn: 'Strait of Gibraltar', lat: 35.95, lon: -5.60,  radiusKm: 70  },
+  { chokePointId: 'CP08', code: 'TAIWAN',  nameKo: '대만 해협',       nameEn: 'Taiwan Strait',      lat: 24.50,  lon: 119.50, radiusKm: 160 },
+  { chokePointId: 'CP09', code: 'GOODHOPE',nameKo: '희망봉 우회로',   nameEn: 'Cape of Good Hope',  lat: -34.36, lon: 18.47,  radiusKm: 180 }
+];
+
+export const carriers = [
+  { carrierId: 'CR01', name: 'HMM',      scacCode: 'HDMU' },
+  { carrierId: 'CR02', name: 'Maersk',   scacCode: 'MAEU' },
+  { carrierId: 'CR03', name: 'MSC',      scacCode: 'MSCU' },
+  { carrierId: 'CR04', name: 'ONE',      scacCode: 'ONEY' },
+  { carrierId: 'CR05', name: 'CMA CGM',  scacCode: 'CMDU' },
+  { carrierId: 'CR06', name: 'Evergreen',scacCode: 'EGLV' }
+];
+
+// FR-06 : 대응 시나리오 템플릿
+export const responsePlaybooks = [
+  { playbookId: 'PB01', eventType: 'GEOPOLITICAL', minGrade: 'HIGH',   actionType: 'REROUTE',
+    title: '희망봉 우회 항로로 변경 요청',
+    description: '선사에 우회 배선을 요청하고 변경된 ETA를 고객에게 사전 통보합니다. 통과 리스크는 제거되지만 항해일수가 9~14일 증가합니다.',
+    estimatedCostUsd: 42000, estimatedDelayReductionDays: 0, sortOrder: 1 },
+  { playbookId: 'PB02', eventType: 'GEOPOLITICAL', minGrade: 'HIGH',   actionType: 'INSURANCE_CLAIM',
+    title: '전쟁위험 특약(War Risk) 부보 확대',
+    description: '해당 구간 통과 전 War Risk Premium을 추가 부보합니다. 화물 가액 기준 0.35~0.7% 수준의 보험료가 발생합니다.',
+    estimatedCostUsd: 8500, estimatedDelayReductionDays: 0, sortOrder: 2 },
+  { playbookId: 'PB03', eventType: 'GEOPOLITICAL', minGrade: 'MEDIUM', actionType: 'NOTIFY_CUSTOMER',
+    title: '고객사 사전 지연 고지',
+    description: '납기 리스크를 고객에게 선제적으로 공유하고 납기 유예 합의를 확보합니다. 지연배상금(LD) 청구 위험을 낮춥니다.',
+    estimatedCostUsd: 0, estimatedDelayReductionDays: 0, sortOrder: 3 },
+  { playbookId: 'PB04', eventType: 'WEATHER',      minGrade: 'MEDIUM', actionType: 'EXPEDITE',
+    title: '인접 항만으로 양하지 변경',
+    description: '폐쇄 예상 항만 대신 인접 대체 항만에 양하하고 내륙 운송으로 연결합니다.',
+    estimatedCostUsd: 12000, estimatedDelayReductionDays: 4, sortOrder: 1 },
+  { playbookId: 'PB05', eventType: 'WEATHER',      minGrade: 'LOW',    actionType: 'MONITOR',
+    title: '기상 경보 해제까지 모니터링',
+    description: '항만 운영 재개 공지를 추적하고 ETA 변동만 반영합니다. 추가 비용이 발생하지 않는 기본 대응입니다.',
+    estimatedCostUsd: 0, estimatedDelayReductionDays: 0, sortOrder: 2 },
+  { playbookId: 'PB06', eventType: 'LABOR_STRIKE', minGrade: 'MEDIUM', actionType: 'REROUTE',
+    title: '인근 항만 우회 (안트베르펜/함부르크)',
+    description: '파업 예정 터미널을 피해 인근 항만으로 기항지를 변경합니다. 선사 스페이스 확보가 선행되어야 합니다.',
+    estimatedCostUsd: 15500, estimatedDelayReductionDays: 6, sortOrder: 1 },
+  { playbookId: 'PB07', eventType: 'PORT_CONGESTION', minGrade: 'LOW', actionType: 'EXPEDITE',
+    title: '프리미엄 선적 서비스 전환',
+    description: '체선이 적은 서비스 루프로 부킹을 이전합니다. TEU당 추가 운임이 발생합니다.',
+    estimatedCostUsd: 6800, estimatedDelayReductionDays: 5, sortOrder: 1 },
+  { playbookId: 'PB08', eventType: 'REGULATION',   minGrade: 'MEDIUM', actionType: 'HOLD',
+    title: '통관 서류 사전 보정 및 선적 보류',
+    description: '신규 규제 발효일 이전 선적을 완료하거나, 원산지 증명 보완 후 선적합니다.',
+    estimatedCostUsd: 2400, estimatedDelayReductionDays: 3, sortOrder: 1 },
+  { playbookId: 'PB09', eventType: 'ACCIDENT',     minGrade: 'HIGH',   actionType: 'REROUTE',
+    title: '대체 선복 긴급 확보',
+    description: '사고 선박에 적재된 화물을 대체 선박으로 재선적하거나 항공 전환을 검토합니다.',
+    estimatedCostUsd: 68000, estimatedDelayReductionDays: 11, sortOrder: 1 },
+  { playbookId: 'PB10', eventType: '*',            minGrade: 'LOW',    actionType: 'MONITOR',
+    title: '상태 유지 및 주기적 재평가',
+    description: '리스크 등급이 상향될 때까지 별도 조치 없이 모니터링합니다.',
+    estimatedCostUsd: 0, estimatedDelayReductionDays: 0, sortOrder: 9 }
+];
