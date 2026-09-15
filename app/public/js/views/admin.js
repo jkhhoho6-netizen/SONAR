@@ -54,7 +54,7 @@ export async function overview() {
         <div class="card" style="margin-bottom:16px"><div class="hd"><h3>등급별 영향 건</h3></div><div class="bd">
           ${GRADES.map(g => { const c = o.matches.byGrade[g] || 0; const t = Math.max(1, o.matches.total);
             return `<div class="gradebar"><span class="nm" style="color:${GRADE_COLOR[g]}">${GRADE_LABEL[g]}</span>
-              <span class="tr"><span class="fl" style="width:${(c / t) * 100}%;background:${GRADE_COLOR[g]}"></span></span>
+              <span class="tr"><span class="fl" style="width:${(c / t) * 100}%;${c ? 'min-width:3px;' : ''}background:${GRADE_COLOR[g]}"></span></span>
               <span class="ct">${c}</span></div>`; }).join('')}
           <a class="btn sm block" style="margin-top:12px" href="#/radar">전체 리스크 레이더 열기</a>
         </div></div>
@@ -623,7 +623,7 @@ export async function feedback() {
           ${f.byEvent.length ? f.byEvent.map(b => `<div style="margin-bottom:12px">
             <div style="font-size:14px;margin-bottom:5px">${esc(b.eventTitle || b.eventId)}</div>
             <div class="gradebar"><span class="nm">오탐</span>
-              <span class="tr"><span class="fl" style="width:${(b.falsePositive / b.total) * 100}%;background:var(--g-crit)"></span></span>
+              <span class="tr"><span class="fl" style="width:${(b.falsePositive / b.total) * 100}%;${b.falsePositive ? 'min-width:3px;' : ''}background:var(--g-crit)"></span></span>
               <span class="ct">${b.falsePositive}/${b.total}</span></div></div>`).join('')
             : '<div class="muted" style="font-size:14px">집계된 데이터가 없습니다.</div>'}
         </div></div>

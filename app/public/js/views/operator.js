@@ -67,7 +67,7 @@ export async function radar({ user }) {
           const c = s.gradeCounts[g] || 0;
           return `<div class="gradebar" data-grade="${g}">
             <span class="nm" style="color:${GRADE_COLOR[g]}">${GRADE_LABEL[g]}</span>
-            <span class="tr"><span class="fl" style="width:${(c / total) * 100}%;background:${GRADE_COLOR[g]}"></span></span>
+            <span class="tr"><span class="fl" style="width:${(c / total) * 100}%;${c ? 'min-width:3px;' : ''}background:${GRADE_COLOR[g]}"></span></span>
             <span class="ct">${c}</span></div>`;
         }).join('');
         rail.innerHTML = `
