@@ -6,7 +6,7 @@ import { riskColor, esc, GRADE_LABEL, EVENT_TYPE_LABEL, date } from './ui.js';
 // Natural Earth 110m 국경 데이터를 Leaflet 이 직접 그린다 (오프라인 동작).
 const WORLD_GEOJSON = new URL('../data/world.geo.json', import.meta.url).href;
 const ATTR = 'Natural Earth';
-const LAND_STYLE   = { fillColor:'#16202c', fillOpacity:1, color:'#243546', weight:.7, interactive:false };
+const LAND_STYLE   = { fillColor:'#16202c', fillOpacity:1, color:'#27394b', weight:.8 };
 let worldCache = null;
 async function loadWorld() {
   if (!worldCache) worldCache = fetch(WORLD_GEOJSON).then(r => r.json());
@@ -42,23 +42,34 @@ export function createMap(container, { onSelect } = {}) {
   const usable = typeof L !== 'undefined';
   if (!usable) return createSvgMap(container, { onSelect });
 
-  const map = L.map(container, { worldCopyJump:true, zoomControl:true, minZoom:2, maxZoom:7, attributionControl:true })
-    .setView([22, 62], 3);
+  // preferCanvas: 벡터 레이어를 SVG 대신 Canvas 로 그려 팬/줌 성능을 확보한다.
+  const map = L.map(container, {
+    worldCopyJump:true, zoomControl:true, minZoom:2, maxZoom:7, attributionControl:true,
+    preferCanvas:true,
+    // 기본값(정수 단계)은 휠 줌이 한 칸씩 튀어 끊겨 보인다. 소수 줌을 허용해 연속적으로 만든다.
+    zoomSnap:0.25, zoomDelta:0.5, wheelPxPerZoomLevel:140, wheelDebounceTime:20
+  }).setView([22, 62], 3);
+
+  // 베이스맵 전용 pane. overlayPane(400) 아래에 두어 육지가 리스크 구역·항로를 덮지 않게 한다.
+  map.createPane('basemap');
+  map.getPane('basemap').style.zIndex = 250;
+  const baseRenderer = L.canvas({ pane:'basemap', padding:0.3 });
   map.attributionControl.addAttribution(ATTR);
-  const landLayer = L.layerGroup().addTo(map);
+  const baseOpts = { pane:'basemap', renderer:baseRenderer, interactive:false };
+
+  // 위경도 그리드 (대양 위 위치 감각 보조) — 육지보다 아래
+  for (let lon = -180; lon <= 180; lon += 30)
+    L.polyline([[-85, lon], [85, lon]], { ...baseOpts, color:'#16222f', weight:.5 }).addTo(map);
+  for (let lat = -60; lat <= 60; lat += 30)
+    L.polyline([[lat, -180], [lat, 180]], { ...baseOpts, color:'#16222f', weight:.5 }).addTo(map);
+  L.polyline([[0, -180], [0, 180]], { ...baseOpts, color:'#1e3243', weight:.8, dashArray:'5,6' }).addTo(map);
+
   loadWorld()
-    .then(geo => L.geoJSON(geo, { style: LAND_STYLE, smoothFactor: 1.2 }).addTo(landLayer))
+    .then(geo => L.geoJSON(geo, { ...baseOpts, style: LAND_STYLE, smoothFactor: 2 }).addTo(map))
     .catch(() => {
       const n = container.parentElement.querySelector('.map-fallback-note');
       if (n) { n.style.display = 'block'; n.textContent = '지도 데이터를 불러오지 못했습니다. 좌표 기준으로만 표시합니다.'; }
     });
-  // 위경도 그리드 (대양 위 위치 감각 보조)
-  const grid = L.layerGroup().addTo(map);
-  for (let lon = -180; lon <= 180; lon += 30)
-    L.polyline([[-85, lon], [85, lon]], { color:'#1b2836', weight:.5, interactive:false }).addTo(grid);
-  for (let lat = -60; lat <= 60; lat += 30)
-    L.polyline([[lat, -180], [lat, 180]], { color:'#1b2836', weight:.5, interactive:false }).addTo(grid);
-  L.polyline([[0, -180], [0, 180]], { color:'#22384a', weight:.8, dashArray:'5,6', interactive:false }).addTo(grid);
 
   const zoneLayer = L.layerGroup().addTo(map);
   const routeLayer = L.layerGroup().addTo(map);
@@ -112,7 +123,7 @@ export function createMap(container, { onSelect } = {}) {
     select(voyageId, fly = true) {
       state.selected = voyageId; draw();
       const v = state.vessels.find(x => x.voyageId === voyageId);
-      if (v && fly && v.currentLat != null) map.flyTo([v.currentLat, v.currentLon], Math.max(map.getZoom(), 4), { duration:.7 });
+      if (v && fly && v.currentLat != null) map.flyTo([v.currentLat, v.currentLon], Math.max(map.getZoom(), 4.5), { duration:.8 });
     },
     focus(lat, lon, z = 5) { map.flyTo([lat, lon], z, { duration:.7 }); },
     reset() { state.selected = null; draw(); map.flyTo([22, 62], 3, { duration:.7 }); },
