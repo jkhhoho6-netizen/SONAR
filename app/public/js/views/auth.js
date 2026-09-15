@@ -1,5 +1,5 @@
 // SONAR - 로그인 / 회원가입 화면
-import { api, auth, ApiError } from '../api.js';
+import { api, auth, ApiError, isEmbedded } from '../api.js';
 import { esc, toast } from '../ui.js';
 
 const HERO = `
@@ -50,6 +50,9 @@ export async function login() {
           <div class="row"><span>시스템 관리자</span><button data-fill="admin@sonar.io">admin@sonar.io</button></div>
           <div class="row"><span>승인 대기 계정</span><button data-fill="park@seah.co.kr">park@seah.co.kr</button></div>
           <div style="margin-top:6px">비밀번호는 모두 <span class="mono">sonar1234</span> 입니다.</div>
+          ${isEmbedded() ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+            이 데모는 <b>브라우저 안에서 단독 실행</b>됩니다. 입력한 내용은 저장되지 않고
+            새로고침하면 초기 상태로 돌아갑니다. 마음껏 눌러보셔도 됩니다.</div>` : ''}
         </div>
       </div></div></div>`,
     mount(root) {

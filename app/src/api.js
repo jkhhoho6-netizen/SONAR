@@ -1,9 +1,11 @@
 // SONAR - REST API 라우트 정의 및 핸들러
-import { randomUUID } from 'node:crypto';
 import db from './db.js';
 import * as V from './view.js';
 import { recomputeMatches, gradeOfScore, GRADE_ORDER, dayDiff } from './risk.js';
 import { planRoute } from './route-planner.js';
+
+// Node 19+ 와 모든 최신 브라우저에서 사용 가능한 전역 crypto 사용
+const randomUUID = () => globalThis.crypto.randomUUID();
 
 export class ApiError extends Error {
   constructor(status, code, message, details) { super(message); this.status = status; this.code = code; this.details = details; }

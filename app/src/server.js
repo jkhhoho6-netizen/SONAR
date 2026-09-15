@@ -8,6 +8,7 @@ import { routes, ApiError } from './api.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const SRV_DIR = __dirname;   // /srv/* → 서버 모듈 (브라우저 임베디드 모드에서 재사용)
 const PORT = Number(process.env.PORT || 4173);
 
 const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8',
@@ -52,10 +53,21 @@ function serveStatic(req, res, pathname) {
   });
 }
 
+function serveSrc(req, res, rel) {
+  const file = path.join(SRV_DIR, path.normalize(rel).replace(/^([/\\])+/, ''));
+  if (!file.startsWith(SRV_DIR) || path.extname(file) !== '.js') { res.writeHead(403); return res.end('Forbidden'); }
+  fs.readFile(file, (err, data) => {
+    if (err) { res.writeHead(404); return res.end('Not found'); }
+    res.writeHead(200, { 'Content-Type': MIME['.js'], 'Cache-Control': 'no-cache' });
+    res.end(data);
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = url.pathname.replace(/\/+$/, '') || '/';
 
+  if (pathname.startsWith('/srv/')) return serveSrc(req, res, url.pathname.slice(5));
   if (!pathname.startsWith('/api/')) return serveStatic(req, res, url.pathname);
 
   res.setHeader('Access-Control-Allow-Origin', '*');

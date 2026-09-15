@@ -2,10 +2,16 @@
 import { riskColor, esc, GRADE_LABEL, EVENT_TYPE_LABEL, date } from './ui.js';
 
 // 키가 필요 없는 다크 베이스맵. 1순위 실패 시 OSM 표준 타일을 CSS 필터로 어둡게 렌더링한다.
-const TILE_PRIMARY = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
-const ATTR_PRIMARY = 'Tiles &copy; Esri';
-const TILE_FALLBACK = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const ATTR_FALLBACK = '&copy; OpenStreetMap contributors';
+// 외부 타일 서버에 의존하지 않는 내장 벡터 베이스맵.
+// Natural Earth 110m 국경 데이터를 Leaflet 이 직접 그린다 (오프라인 동작).
+const WORLD_GEOJSON = new URL('../data/world.geo.json', import.meta.url).href;
+const ATTR = 'Natural Earth';
+const LAND_STYLE   = { fillColor:'#16202c', fillOpacity:1, color:'#243546', weight:.7, interactive:false };
+let worldCache = null;
+async function loadWorld() {
+  if (!worldCache) worldCache = fetch(WORLD_GEOJSON).then(r => r.json());
+  return worldCache;
+}
 
 function vesselIcon(v, selected) {
   const c = v.topRiskScore ? riskColor(v.topRiskScore) : '#ffffff';
@@ -36,19 +42,23 @@ export function createMap(container, { onSelect } = {}) {
   const usable = typeof L !== 'undefined';
   if (!usable) return createSvgMap(container, { onSelect });
 
-  const map = L.map(container, { worldCopyJump:true, zoomControl:true, minZoom:2, maxZoom:8, attributionControl:true })
+  const map = L.map(container, { worldCopyJump:true, zoomControl:true, minZoom:2, maxZoom:7, attributionControl:true })
     .setView([22, 62], 3);
-  let tiles = L.tileLayer(TILE_PRIMARY, { attribution:ATTR_PRIMARY, maxZoom:8 });
-  let tileErrors = 0, swapped = false;
-  tiles.on('tileerror', () => {
-    if (++tileErrors < 5 || swapped) return;
-    swapped = true;
-    map.removeLayer(tiles);
-    tiles = L.tileLayer(TILE_FALLBACK, { attribution:ATTR_FALLBACK, maxZoom:8, className:'osm-dark' }).addTo(map);
-    const n = container.parentElement.querySelector('.map-fallback-note');
-    if (n) { n.style.display = 'block'; n.textContent = '기본 베이스맵을 불러오지 못해 대체 타일로 표시합니다.'; }
-  });
-  tiles.addTo(map);
+  map.attributionControl.addAttribution(ATTR);
+  const landLayer = L.layerGroup().addTo(map);
+  loadWorld()
+    .then(geo => L.geoJSON(geo, { style: LAND_STYLE, smoothFactor: 1.2 }).addTo(landLayer))
+    .catch(() => {
+      const n = container.parentElement.querySelector('.map-fallback-note');
+      if (n) { n.style.display = 'block'; n.textContent = '지도 데이터를 불러오지 못했습니다. 좌표 기준으로만 표시합니다.'; }
+    });
+  // 위경도 그리드 (대양 위 위치 감각 보조)
+  const grid = L.layerGroup().addTo(map);
+  for (let lon = -180; lon <= 180; lon += 30)
+    L.polyline([[-85, lon], [85, lon]], { color:'#1b2836', weight:.5, interactive:false }).addTo(grid);
+  for (let lat = -60; lat <= 60; lat += 30)
+    L.polyline([[lat, -180], [lat, 180]], { color:'#1b2836', weight:.5, interactive:false }).addTo(grid);
+  L.polyline([[0, -180], [0, 180]], { color:'#22384a', weight:.8, dashArray:'5,6', interactive:false }).addTo(grid);
 
   const zoneLayer = L.layerGroup().addTo(map);
   const routeLayer = L.layerGroup().addTo(map);
