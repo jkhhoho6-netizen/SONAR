@@ -31,22 +31,22 @@ export async function overview() {
                ['수집 원문', p.totalFeedCount, `미처리 ${p.pendingFeedCount} · 폐기 ${p.discardedFeedCount}`, '#/admin/feeds'],
                ['정형화 이벤트', p.publishedEventCount + p.draftEventCount, `검토대기 ${p.draftEventCount}`, '#/admin/events'],
                ['영향 건 매칭', o.matches.total, `CRITICAL ${o.matches.byGrade.CRITICAL}`, '#/matches']]
-              .map(([t, v, s, h], i) => `<a href="${h}" style="position:relative;padding:13px;border:1px solid var(--line);
+              .map(([t, v, s, h], i) => `<a href="${h}" style="position:relative;padding:18px 16px;border:1px solid var(--line);
                 ${i ? 'border-left:none;' : ''}background:var(--panel-2);display:block">
-                <div style="font-size:10.5px;color:var(--fg-3);letter-spacing:.05em">${t}</div>
-                <div class="mono" style="font-size:23px;font-weight:600;margin:5px 0 3px">${v}</div>
-                <div style="font-size:10.5px;color:var(--fg-3)">${s}</div>
+                <div style="font-size:12px;color:var(--fg-3);letter-spacing:.05em">${t}</div>
+                <div class="mono" style="font-size:26.5px;font-weight:600;margin:5px 0 3px">${v}</div>
+                <div style="font-size:12px;color:var(--fg-3)">${s}</div>
                 ${i < 3 ? `<span style="position:absolute;right:-8px;top:50%;transform:translateY(-50%);z-index:2;
                   background:var(--panel);border:1px solid var(--line);border-radius:50%;width:16px;height:16px;
-                  display:grid;place-items:center;font-size:9px;color:var(--fg-3)">→</span>` : ''}</a>`).join('')}
+                  display:grid;place-items:center;font-size:10.5px;color:var(--fg-3)">→</span>` : ''}</a>`).join('')}
           </div>
-          <h4 style="font-size:11px;color:var(--fg-3);letter-spacing:.1em;margin:0 0 9px">최근 수집 작업</h4>
-          <table><thead><tr><th>소스</th><th style="width:96px">수집/처리</th><th style="width:96px">상태</th><th style="width:118px">실행</th></tr></thead><tbody>
+          <h4 style="font-size:12.5px;color:var(--fg-3);letter-spacing:.1em;margin:0 0 9px">최근 수집 작업</h4>
+          <table><thead><tr><th>소스</th><th style="width:115px">수집/처리</th><th style="width:115px">상태</th><th style="width:142px">실행</th></tr></thead><tbody>
             ${o.recentJobs.map(j => `<tr><td>${esc(j.sourceName || j.sourceId)}
-              ${j.errorMessage ? `<div style="color:var(--warn);font-size:11px">${esc(j.errorMessage)}</div>` : ''}</td>
+              ${j.errorMessage ? `<div style="color:var(--warn);font-size:12.5px">${esc(j.errorMessage)}</div>` : ''}</td>
               <td class="mono">${j.fetchedCount} / ${j.processedCount}</td>
               <td>${j.status === 'SUCCESS' ? '<span class="chip ok">성공</span>' : j.status === 'PARTIAL' ? '<span class="chip warn">부분 성공</span>' : '<span class="chip err">실패</span>'}</td>
-              <td class="mono" style="font-size:11px">${dt(j.startedAt)}</td></tr>`).join('')}
+              <td class="mono" style="font-size:12.5px">${dt(j.startedAt)}</td></tr>`).join('')}
           </tbody></table>
         </div></div>
 
@@ -59,7 +59,7 @@ export async function overview() {
           <a class="btn sm block" style="margin-top:12px" href="#/radar">전체 리스크 레이더 열기</a>
         </div></div>
         <div class="card"><div class="hd"><h3>최근 감사 로그</h3><span class="sp"></span>
-          <a href="#/admin/audit" style="font-size:11px;color:var(--accent)">전체</a></div>
+          <a href="#/admin/audit" style="font-size:12.5px;color:var(--accent)">전체</a></div>
           <div class="bd"><div class="timeline">
             ${o.recentAudits.map(a => `<div class="tl-item"><div class="d">${dt(a.createdAt)} · ${esc(a.actorName)}</div>
               <div class="t"><span class="chip">${esc(a.action)}</span></div>
@@ -91,25 +91,26 @@ export async function eventMonitor() {
       async function load() {
         const box = page.querySelector('#list');
         const r = await api.get('/admin/risk-events', st);
-        box.innerHTML = `<div class="card"><div class="bd flush"><div class="tbl-wrap"><table><thead><tr>
-          <th style="width:96px">상태</th><th>이벤트 (LLM 정형화 결과)</th><th style="width:210px">적용 영향 지역</th>
-          <th style="width:112px">심각도·신뢰도</th><th style="width:132px">영향 기간</th>
-          <th style="width:84px">매칭</th><th style="width:150px">수집 소스</th></tr></thead><tbody>
+        box.innerHTML = `<div class="card"><div class="bd flush"><div class="tbl-wrap"><table style="min-width:1140px"><thead><tr>
+          <th style="width:100px">상태</th><th style="min-width:300px">이벤트 (LLM 정형화 결과)</th>
+          <th style="width:206px">적용 영향 지역</th>
+          <th style="width:118px">심각도·신뢰도</th><th style="width:128px">영향 기간</th>
+          <th style="width:80px">매칭</th><th style="width:150px">수집 소스</th></tr></thead><tbody>
           ${r.items.map(e => `<tr class="clickable" data-id="${e.eventId}">
             <td>${chip(EVENT_STATUS, e.status)}</td>
             <td><div style="display:flex;gap:6px;align-items:flex-start">
-                <span style="font-size:14px;line-height:1.3">${EVENT_TYPE_ICON[e.eventType] || '•'}</span>
+                <span style="font-size:16px;line-height:1.3">${EVENT_TYPE_ICON[e.eventType] || '•'}</span>
                 <div><div>${esc(e.title)}</div>
-                <div class="muted" style="font-size:11px;margin-top:2px">${esc(EVENT_TYPE_LABEL[e.eventType] || e.eventType)} ·
+                <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(EVENT_TYPE_LABEL[e.eventType] || e.eventType)} ·
                   ${esc(e.llmModel || '')} ${e.reviewerName ? `· 검토 ${esc(e.reviewerName)}` : '· <span style="color:var(--warn)">미검토</span>'}</div></div></div></td>
             <td>${e.areaNames.map(a => `<span class="chip" style="margin:1px 2px 1px 0">${esc(a)}</span>`).join('') || '<span class="chip err">미지정</span>'}</td>
             <td><div style="display:flex;align-items:center;gap:5px">
                 <span class="mono" style="color:${riskColor(e.severity * 20)}">${e.severity}/5</span>
-                <span class="muted" style="font-size:11px">· ${pct(e.confidence)}</span></div>
-              <div class="muted" style="font-size:10.5px">가중치 ${e.trustWeight ?? '-'}</div></td>
-            <td class="mono" style="font-size:11px">${date(e.startDate)}<br>~ ${date(e.expectedEndDate)}</td>
+                <span class="muted" style="font-size:12.5px">· ${pct(e.confidence)}</span></div>
+              <div class="muted" style="font-size:12px">가중치 ${e.trustWeight ?? '-'}</div></td>
+            <td class="mono" style="font-size:12.5px">${date(e.startDate)}<br>~ ${date(e.expectedEndDate)}</td>
             <td>${e.impactedShipmentCount ? `<span class="badge g-${e.topRiskGrade}"><i></i>${e.impactedShipmentCount}</span>` : '<span class="muted">0</span>'}</td>
-            <td style="font-size:11px">${esc(e.sourceName || '-')}</td></tr>`).join('')}
+            <td style="font-size:12.5px">${esc(e.sourceName || '-')}</td></tr>`).join('')}
         </tbody></table></div></div></div>`;
         box.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => location.hash = `#/admin/events/${tr.dataset.id}`);
       }
@@ -163,10 +164,10 @@ export async function eventReview({ params }) {
 
       <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 지역 매핑 (FR-02 → FR-03)</h3><span class="sp"></span>
         <button class="btn sm" id="add-area" type="button">＋ 지역 추가</button></div><div class="bd flush">
-        <table><thead><tr><th style="width:130px">구분</th><th>지역</th><th style="width:100px">영향도(1~5)</th>
-          <th style="width:110px">예상 지연(일)</th><th style="width:74px"></th></tr></thead>
+        <table><thead><tr><th style="width:156px">구분</th><th>지역</th><th style="width:120px">영향도(1~5)</th>
+          <th style="width:132px">예상 지연(일)</th><th style="width:89px"></th></tr></thead>
           <tbody id="areas">${e.areas.map(areaRow).join('')}</tbody></table>
-        <div style="padding:13px 14px;border-top:1px solid var(--line);display:flex;gap:8px">
+        <div style="padding:17px 20px;border-top:1px solid var(--line);display:flex;gap:10px">
           <button class="btn primary" id="save-areas" type="button">영향 지역 저장 후 재매칭</button>
           <button class="btn" id="rematch" type="button">재매칭만 실행</button></div>
       </div></div>
@@ -179,7 +180,7 @@ export async function eventReview({ params }) {
     <div>
       <div class="card" style="margin-bottom:16px"><div class="hd"><h3>발행 상태</h3><span class="sp"></span>${chip(EVENT_STATUS, e.status)}</div>
         <div class="bd">
-          <p class="muted" style="font-size:11.5px;margin:0 0 12px;line-height:1.6">
+          <p class="muted" style="font-size:13px;margin:0 0 12px;line-height:1.6">
             발행하면 해당 회사 담당자 화면에 노출되고, 임계값을 초과한 건에 대해 알림이 발송됩니다.</p>
           <div style="display:grid;gap:8px">
             <button class="btn primary block" id="publish" ${e.status === 'PUBLISHED' ? 'disabled' : ''}>발행 (담당자에게 공개)</button>
@@ -195,8 +196,8 @@ export async function eventReview({ params }) {
         ${e.source ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px">
             <span class="chip info">${esc(e.source.sourceName)}</span><span class="chip">${esc(e.source.sourceType)}</span>
             <span class="chip">신뢰가중치 ${e.source.trustWeight}</span></div>
-          <div style="font-size:12.5px;font-weight:600;line-height:1.5;margin-bottom:9px">${esc(e.source.title)}</div>
-          <div style="font-size:11.5px;color:var(--fg-3);line-height:1.75;max-height:300px;overflow:auto;
+          <div style="font-size:14.5px;font-weight:600;line-height:1.5;margin-bottom:9px">${esc(e.source.title)}</div>
+          <div style="font-size:13px;color:var(--fg-3);line-height:1.75;max-height:300px;overflow:auto;
             background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:11px">${esc(e.source.body)}</div>
           <dl class="dl" style="margin-top:12px"><dt>발행</dt><dd class="mono">${dt(e.source.publishedAt)}</dd>
             <dt>수집</dt><dd class="mono">${dt(e.source.collectedAt)}</dd></dl>
@@ -265,7 +266,7 @@ export async function eventReview({ params }) {
       page.querySelector('#publish').onclick = () => setStatus('PUBLISHED');
       page.querySelector('#unpublish').onclick = () => setStatus('DRAFT');
       page.querySelector('#dismiss').onclick = () => modal({ title:'이벤트 기각',
-        body:`<p style="font-size:12.5px;color:var(--fg-2);margin:0 0 14px">기각하면 매칭이 즉시 제거되고 담당자 화면에서 사라집니다. 사유를 입력하세요.</p>
+        body:`<p style="font-size:14.5px;color:var(--fg-2);margin:0 0 14px">기각하면 매칭이 즉시 제거되고 담당자 화면에서 사라집니다. 사유를 입력하세요.</p>
           <div class="field"><label>기각 사유 <span class="req">*</span></label><textarea id="rn" placeholder="예: 단일 소셜 출처, 교차 검증 불가"></textarea></div>`,
         actions:[{ label:'취소' }, { label:'기각', cls:'danger', onClick:(bg, c) => {
           const v = bg.querySelector('#rn').value.trim();
@@ -283,12 +284,12 @@ export async function eventReview({ params }) {
 function matchTable(matches) {
   if (!matches.length) return `<div class="empty"><div class="ic">◎</div><h4>매칭된 화물이 없습니다</h4>
     <p>영향 지역·기간과 겹치는 운송 건이 없습니다. 지역을 추가하거나 기간을 조정해 보세요.</p></div>`;
-  return `<div class="tbl-wrap" style="max-height:400px"><table><thead><tr><th style="width:64px">점수</th>
-    <th>화물 / 회사</th><th style="width:140px">매칭 근거</th><th style="width:96px">노출일</th><th style="width:80px">등급</th></tr></thead><tbody>
-    ${matches.map(m => `<tr><td class="mono" style="font-size:15px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</td>
-      <td><div class="mono" style="font-size:11.5px">${esc(m.shipmentNo)}</div>
-        <div class="muted" style="font-size:11px">${esc(m.companyName || '')} · ${esc(m.commodity)}</div></td>
-      <td><div>${esc(m.areaName || '')}</div><div class="muted" style="font-size:11px">${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div></td>
+  return `<div class="tbl-wrap" style="max-height:400px"><table><thead><tr><th style="width:77px">점수</th>
+    <th>화물 / 회사</th><th style="width:168px">매칭 근거</th><th style="width:115px">노출일</th><th style="width:96px">등급</th></tr></thead><tbody>
+    ${matches.map(m => `<tr><td class="mono" style="font-size:17px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</td>
+      <td><div class="mono" style="font-size:13px">${esc(m.shipmentNo)}</div>
+        <div class="muted" style="font-size:12.5px">${esc(m.companyName || '')} · ${esc(m.commodity)}</div></td>
+      <td><div>${esc(m.areaName || '')}</div><div class="muted" style="font-size:12.5px">${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div></td>
       <td class="mono">${date(m.exposureDate)}</td><td>${grade(m.riskGrade)}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
@@ -307,17 +308,17 @@ export async function feedList() {
       async function load() {
         const r = await api.get('/admin/feeds', st);
         page.querySelector('#list').innerHTML = `<div class="card"><div class="bd flush"><table><thead><tr>
-          <th style="width:150px">소스</th><th>원문</th><th style="width:118px">수집</th>
-          <th style="width:110px">처리 상태</th><th style="width:100px"></th></tr></thead><tbody>
+          <th style="width:180px">소스</th><th>원문</th><th style="width:142px">수집</th>
+          <th style="width:132px">처리 상태</th><th style="width:120px"></th></tr></thead><tbody>
           ${r.items.map(f => `<tr>
-            <td><div>${esc(f.sourceName)}</div><div class="muted mono" style="font-size:10.5px">${esc(f.sourceType)} · ${f.trustWeight}</div></td>
-            <td><div style="font-size:12.5px">${esc(f.title)}</div>
-              <div class="muted" style="font-size:11px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;
+            <td><div>${esc(f.sourceName)}</div><div class="muted mono" style="font-size:12px">${esc(f.sourceType)} · ${f.trustWeight}</div></td>
+            <td><div style="font-size:14.5px">${esc(f.title)}</div>
+              <div class="muted" style="font-size:12.5px;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;
                 -webkit-box-orient:vertical;overflow:hidden">${esc(f.body)}</div>
-              ${f.discardReason ? `<div style="color:var(--err);font-size:11px;margin-top:4px">↳ ${esc(f.discardReason)}</div>` : ''}
-              ${f.eventId ? `<div style="margin-top:5px"><a href="#/admin/events/${f.eventId}" style="color:var(--accent);font-size:11px">
+              ${f.discardReason ? `<div style="color:var(--err);font-size:12.5px;margin-top:4px">↳ ${esc(f.discardReason)}</div>` : ''}
+              ${f.eventId ? `<div style="margin-top:5px"><a href="#/admin/events/${f.eventId}" style="color:var(--accent);font-size:12.5px">
                 → ${esc(f.eventTitle)}</a> ${chip(EVENT_STATUS, f.eventStatus)}</div>` : ''}</td>
-            <td class="mono" style="font-size:11px">${dt(f.collectedAt)}</td>
+            <td class="mono" style="font-size:12.5px">${dt(f.collectedAt)}</td>
             <td>${f.processStatus === 'PROCESSED' ? '<span class="chip ok">정형화 완료</span>'
                 : f.processStatus === 'PENDING' ? '<span class="chip warn">미처리</span>' : '<span class="chip err">폐기</span>'}</td>
             <td>${f.processStatus !== 'PROCESSED' ? `<button class="btn sm" data-an="${f.rawFeedId}">LLM 분석</button>` : ''}</td>
@@ -341,17 +342,17 @@ export async function sources() {
       <div class="banner info"><span class="ic">ℹ</span><div>
         <b>신뢰가중치</b>는 리스크 점수의 신뢰도 계수에 직접 곱해집니다. 값을 변경하면 전체 영향 건이 즉시 재계산됩니다.</div></div>
       <div class="card"><div class="bd flush"><table><thead><tr>
-        <th style="width:190px">소스</th><th style="width:96px">유형</th><th>URL</th>
-        <th style="width:130px">신뢰가중치</th><th style="width:96px">수집 주기</th>
-        <th style="width:110px">수집/이벤트</th><th style="width:96px">상태</th></tr></thead><tbody>
+        <th style="width:228px">소스</th><th style="width:115px">유형</th><th>URL</th>
+        <th style="width:156px">신뢰가중치</th><th style="width:115px">수집 주기</th>
+        <th style="width:132px">수집/이벤트</th><th style="width:115px">상태</th></tr></thead><tbody>
         ${r.items.map(s => `<tr data-id="${s.sourceId}">
-          <td><div>${esc(s.name)}</div><div class="muted mono" style="font-size:10.5px">${esc(s.sourceId)}</div></td>
+          <td><div>${esc(s.name)}</div><div class="muted mono" style="font-size:12px">${esc(s.sourceId)}</div></td>
           <td><span class="chip">${esc(s.sourceType)}</span></td>
-          <td class="mono" style="font-size:11px;color:var(--fg-3);word-break:break-all">${esc(s.url)}
+          <td class="mono" style="font-size:12.5px;color:var(--fg-3);word-break:break-all">${esc(s.url)}
             ${s.lastJob && s.lastJob.errorMessage ? `<div style="color:var(--warn)">${esc(s.lastJob.errorMessage)}</div>` : ''}</td>
-          <td><input class="tw" type="number" min="0" max="1" step="0.01" value="${s.trustWeight}" style="padding:5px 8px;font-size:12px"></td>
+          <td><input class="tw" type="number" min="0" max="1" step="0.01" value="${s.trustWeight}" style="padding:9px 11px;font-size:14px"></td>
           <td class="mono">${s.collectIntervalMin}분</td>
-          <td class="mono" style="font-size:11px">${s.feedCount} / ${s.eventCount}</td>
+          <td class="mono" style="font-size:12.5px">${s.feedCount} / ${s.eventCount}</td>
           <td><button class="btn sm ${s.enabled ? '' : 'danger'} tg">${s.enabled ? '사용 중' : '중지됨'}</button></td>
         </tr>`).join('')}</tbody></table></div></div>`,
     mount(page) {
@@ -398,22 +399,22 @@ export async function thresholds() {
       <div class="banner info"><span class="ic">ℹ</span><div>
         등급 구간은 <b>0~100 사이에서 빈틈 없이 연속</b>되어야 합니다. 저장하면 전체 영향 건의 등급이 즉시 재계산됩니다.</div></div>
       <div class="card"><div class="hd"><h3>리스크 등급 기준</h3></div><div class="bd flush">
-        <table><thead><tr><th style="width:120px">등급</th><th style="width:130px">최소 점수</th><th style="width:130px">최대 점수</th>
-          <th style="width:120px">알림 발송</th><th style="width:150px">대외 발송 승인</th><th>최근 변경</th></tr></thead>
+        <table><thead><tr><th style="width:144px">등급</th><th style="width:156px">최소 점수</th><th style="width:156px">최대 점수</th>
+          <th style="width:144px">알림 발송</th><th style="width:180px">대외 발송 승인</th><th>최근 변경</th></tr></thead>
         <tbody id="rows">${r.items.map(t => `<tr data-g="${t.grade}">
           <td><span class="badge g-${t.grade}"><i></i>${GRADE_LABEL[t.grade]}</span></td>
-          <td><input class="mn" type="number" min="0" max="100" value="${t.minScore}" style="padding:5px 8px"></td>
-          <td><input class="mx" type="number" min="0" max="100" value="${t.maxScore}" style="padding:5px 8px"></td>
-          <td><label class="check" style="padding:5px 8px;border:none;background:none"><input class="ne" type="checkbox" ${t.notifyEnabled ? 'checked' : ''}> 발송</label></td>
-          <td><label class="check" style="padding:5px 8px;border:none;background:none"><input class="ra" type="checkbox" ${t.requiresApproval ? 'checked' : ''}> 승인 필요</label></td>
-          <td class="mono" style="font-size:11px;color:var(--fg-3)">${dt(t.updatedAt)}</td></tr>`).join('')}</tbody></table>
-        <div style="padding:13px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center">
+          <td><input class="mn" type="number" min="0" max="100" value="${t.minScore}" style="padding:9px 11px"></td>
+          <td><input class="mx" type="number" min="0" max="100" value="${t.maxScore}" style="padding:9px 11px"></td>
+          <td><label class="check" style="padding:6px 2px;border:none;background:none;font-size:13.5px"><input class="ne" type="checkbox" ${t.notifyEnabled ? 'checked' : ''}> 발송</label></td>
+          <td><label class="check" style="padding:6px 2px;border:none;background:none;font-size:13.5px"><input class="ra" type="checkbox" ${t.requiresApproval ? 'checked' : ''}> 승인 필요</label></td>
+          <td class="mono" style="font-size:12.5px;color:var(--fg-3)">${dt(t.updatedAt)}</td></tr>`).join('')}</tbody></table>
+        <div style="padding:17px 20px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center">
           <button class="btn primary" id="save">저장 후 전체 재계산</button>
-          <span id="msg" style="font-size:12px"></span></div>
+          <span id="msg" style="font-size:14px"></span></div>
       </div></div>
       <div class="card" style="margin-top:16px"><div class="hd"><h3>리스크 점수 산식 (읽기 전용)</h3></div><div class="bd">
         <div class="formula">riskScore = 100 × severityFactor × exposureFactor × confidenceFactor</div>
-        <table style="margin-top:12px"><thead><tr><th style="width:150px">계수</th><th>구성</th></tr></thead><tbody>
+        <table style="margin-top:12px"><thead><tr><th style="width:180px">계수</th><th>구성</th></tr></thead><tbody>
           <tr><td>severityFactor</td><td class="muted">(이벤트 심각도 / 5) × 0.7 + (지역 영향도 / 5) × 0.3</td></tr>
           <tr><td>exposureFactor</td><td class="muted">0.4 + 0.6 × (가액 0.35 + 납기긴급도 0.40 + 경로경직성 0.25)</td></tr>
           <tr><td>confidenceFactor</td><td class="muted">LLM 확신도 × 수집 소스 신뢰가중치</td></tr>
@@ -451,17 +452,17 @@ export async function users() {
       async function load() {
         const r = await api.get('/admin/users', st);
         page.querySelector('#list').innerHTML = `<div class="card"><div class="bd flush"><table><thead><tr>
-          <th style="width:150px">이름 / 권한</th><th style="width:210px">이메일</th><th>소속</th>
-          <th style="width:84px">화물</th><th style="width:118px">신청일</th><th style="width:96px">상태</th>
-          <th style="width:170px">처리</th></tr></thead><tbody>
+          <th style="width:180px">이름 / 권한</th><th style="width:252px">이메일</th><th>소속</th>
+          <th style="width:101px">화물</th><th style="width:142px">신청일</th><th style="width:115px">상태</th>
+          <th style="width:204px">처리</th></tr></thead><tbody>
           ${r.items.map(u => `<tr data-id="${u.userId}">
-            <td><div>${esc(u.name)}</div><div class="muted" style="font-size:11px">${u.role === 'ADMIN' ? '시스템 관리자' : '운영 담당자'} · ${esc(u.department || '-')}</div></td>
-            <td class="mono" style="font-size:11.5px">${esc(u.email)}</td>
+            <td><div>${esc(u.name)}</div><div class="muted" style="font-size:12.5px">${u.role === 'ADMIN' ? '시스템 관리자' : '운영 담당자'} · ${esc(u.department || '-')}</div></td>
+            <td class="mono" style="font-size:13px">${esc(u.email)}</td>
             <td><div>${esc(u.companyName || '-')}</div>
-              <div class="muted" style="font-size:11px">${u.companyType === 'SHIPPER' ? '화주' : u.companyType === 'FORWARDER' ? '포워더' : '-'}</div>
-              ${u.rejectReason ? `<div style="color:var(--err);font-size:11px;margin-top:3px">↳ ${esc(u.rejectReason)}</div>` : ''}</td>
+              <div class="muted" style="font-size:12.5px">${u.companyType === 'SHIPPER' ? '화주' : u.companyType === 'FORWARDER' ? '포워더' : '-'}</div>
+              ${u.rejectReason ? `<div style="color:var(--err);font-size:12.5px;margin-top:3px">↳ ${esc(u.rejectReason)}</div>` : ''}</td>
             <td class="mono">${u.shipmentCount}</td>
-            <td class="mono" style="font-size:11px">${dt(u.createdAt)}</td>
+            <td class="mono" style="font-size:12.5px">${dt(u.createdAt)}</td>
             <td>${chip(USER_STATUS, u.status)}</td>
             <td>${u.status === 'PENDING'
               ? `<button class="btn sm primary" data-ok="${u.userId}">승인</button>
@@ -506,20 +507,20 @@ export async function shipmentApproval() {
         if (!r.items.length) { page.querySelector('#list').innerHTML = `<div class="card"><div class="bd">
           <div class="empty"><div class="ic">✓</div><h4>처리할 건이 없습니다</h4><p>승인 대기 중인 화물 등록 신청이 없습니다.</p></div></div></div>`; return; }
         page.querySelector('#list').innerHTML = `<div class="card"><div class="bd flush"><table><thead><tr>
-          <th style="width:126px">화물번호</th><th>품목 / 회사</th><th style="width:190px">운송 구간</th>
-          <th style="width:106px">가액</th><th style="width:110px">일정</th><th style="width:104px">잠정 리스크</th>
-          <th style="width:110px">상태</th><th style="width:168px">처리</th></tr></thead><tbody>
+          <th style="width:151px">화물번호</th><th>품목 / 회사</th><th style="width:228px">운송 구간</th>
+          <th style="width:127px">가액</th><th style="width:132px">일정</th><th style="width:125px">잠정 리스크</th>
+          <th style="width:132px">상태</th><th style="width:202px">처리</th></tr></thead><tbody>
           ${r.items.map(s => `<tr data-id="${s.shipmentId}">
-            <td><div class="mono" style="font-size:11.5px">${esc(s.shipmentNo)}</div>
-              <div class="muted" style="font-size:10.5px">${dt(s.createdAt)}</div></td>
+            <td><div class="mono" style="font-size:13px">${esc(s.shipmentNo)}</div>
+              <div class="muted" style="font-size:12px">${dt(s.createdAt)}</div></td>
             <td><div>${esc(s.commodity)}</div>
-              <div class="muted" style="font-size:11px">${esc(s.companyName)} · ${esc(s.ownerName || '')}</div></td>
+              <div class="muted" style="font-size:12.5px">${esc(s.companyName)} · ${esc(s.ownerName || '')}</div></td>
             <td><div>${esc(s.originPort.nameKo)} → ${esc(s.destinationPort.nameKo)}</div>
-              <div class="muted" style="font-size:11px">${esc(s.vessel ? s.vessel.vesselName : '선박 미배정')}</div></td>
+              <div class="muted" style="font-size:12.5px">${esc(s.vessel ? s.vessel.vesselName : '선박 미배정')}</div></td>
             <td class="mono">${money(s.cargoValueUsd)}</td>
-            <td class="mono" style="font-size:11px">${date(s.etd)}<br><span class="muted">${date(s.eta)}</span></td>
+            <td class="mono" style="font-size:12.5px">${date(s.etd)}<br><span class="muted">${date(s.eta)}</span></td>
             <td>${s.topRiskGrade === 'NONE' ? '<span class="chip ok">영향 없음</span>'
-              : `<span class="mono" style="font-size:15px;font-weight:600;color:${riskColor(s.topRiskScore)}">${s.topRiskScore}</span> ${grade(s.topRiskGrade)}`}</td>
+              : `<span class="mono" style="font-size:17px;font-weight:600;color:${riskColor(s.topRiskScore)}">${s.topRiskScore}</span> ${grade(s.topRiskGrade)}`}</td>
             <td>${chip(SHIPMENT_STATUS, s.status)}</td>
             <td>${s.status === 'PENDING_APPROVAL'
               ? `<button class="btn sm primary" data-ok="${s.shipmentId}">승인</button>
@@ -562,17 +563,17 @@ export async function notificationApproval() {
         if (!r.items.length) { page.querySelector('#list').innerHTML = `<div class="card"><div class="bd">
           <div class="empty"><div class="ic">✉</div><h4>처리할 알림이 없습니다</h4><p>승인 대기 중인 대외 발송 건이 없습니다.</p></div></div></div>`; return; }
         page.querySelector('#list').innerHTML = `<div class="card"><div class="bd flush"><table><thead><tr>
-          <th style="width:106px">채널·범위</th><th>내용</th><th style="width:130px">요청자</th>
-          <th style="width:118px">요청 일시</th><th style="width:106px">상태</th><th style="width:168px">처리</th></tr></thead><tbody>
+          <th style="width:127px">채널·범위</th><th>내용</th><th style="width:156px">요청자</th>
+          <th style="width:142px">요청 일시</th><th style="width:127px">상태</th><th style="width:202px">처리</th></tr></thead><tbody>
           ${r.items.map(n => `<tr>
             <td><div class="chip">${esc(CHANNEL_LABEL[n.channel] || n.channel)}</div>
               <div style="margin-top:3px">${n.scope === 'EXTERNAL' ? '<span class="chip warn">대외</span>' : '<span class="chip">사내</span>'}</div></td>
-            <td><div style="font-size:12.5px">${esc(n.title)}</div>
-              <div class="muted" style="font-size:11.5px;margin-top:2px">${esc(n.message)}</div>
-              ${n.failReason ? `<div style="color:var(--err);font-size:11px;margin-top:3px">↳ ${esc(n.failReason)}</div>` : ''}
-              ${n.matchId ? `<a href="#/matches/${n.matchId}" style="color:var(--accent);font-size:11px">→ 영향 건 ${esc(n.shipmentNo || '')}</a>` : ''}</td>
+            <td><div style="font-size:14.5px">${esc(n.title)}</div>
+              <div class="muted" style="font-size:13px;margin-top:2px">${esc(n.message)}</div>
+              ${n.failReason ? `<div style="color:var(--err);font-size:12.5px;margin-top:3px">↳ ${esc(n.failReason)}</div>` : ''}
+              ${n.matchId ? `<a href="#/matches/${n.matchId}" style="color:var(--accent);font-size:12.5px">→ 영향 건 ${esc(n.shipmentNo || '')}</a>` : ''}</td>
             <td>${esc(n.requesterName || n.requestedBy)}</td>
-            <td class="mono" style="font-size:11px">${dt(n.createdAt)}</td>
+            <td class="mono" style="font-size:12.5px">${dt(n.createdAt)}</td>
             <td>${chip(NOTI_STATUS, n.status)}</td>
             <td>${n.status === 'PENDING_APPROVAL'
               ? `<button class="btn sm primary" data-ok="${n.notificationId}">승인·발송</button>
@@ -603,28 +604,28 @@ export async function feedback() {
           <div class="sx">피드백 ${f.total}건 기준</div></div>
         <div class="kpi"><div class="lb">실제 영향 확인</div><div class="vl">${f.relevant}</div><div class="sx">유효 매칭</div></div>
         <div class="kpi crit"><div class="lb">오탐 신고</div><div class="vl">${f.falsePositive}</div><div class="sx">매칭 규칙 개선 대상</div></div>
-        <div class="kpi"><div class="lb">평균 실제 지연</div><div class="vl">${f.avgActualDelayDays ?? '-'}<span style="font-size:14px">일</span></div>
+        <div class="kpi"><div class="lb">평균 실제 지연</div><div class="vl">${f.avgActualDelayDays ?? '-'}<span style="font-size:16px">일</span></div>
           <div class="sx">예측 검증용</div></div>
       </div>
       <div class="cols">
         <div class="card"><div class="hd"><h3>피드백 상세</h3></div><div class="bd flush">
-          ${f.items.length ? `<table><thead><tr><th style="width:110px">판정</th><th>의견</th>
-            <th style="width:110px">실제 지연</th><th style="width:130px">작성자</th><th style="width:118px">일시</th></tr></thead><tbody>
+          ${f.items.length ? `<table><thead><tr><th style="width:132px">판정</th><th>의견</th>
+            <th style="width:132px">실제 지연</th><th style="width:156px">작성자</th><th style="width:142px">일시</th></tr></thead><tbody>
             ${f.items.map(x => `<tr class="clickable" data-id="${x.matchId}">
               <td>${x.isRelevant ? '<span class="chip ok">실제 영향</span>' : '<span class="chip err">오탐</span>'}</td>
               <td>${esc(x.comment || '-')}</td>
               <td class="mono">${x.actualDelayDays == null ? '-' : x.actualDelayDays + '일'}</td>
-              <td>${esc(x.userName || '')}</td><td class="mono" style="font-size:11px">${dt(x.createdAt)}</td></tr>`).join('')}
+              <td>${esc(x.userName || '')}</td><td class="mono" style="font-size:12.5px">${dt(x.createdAt)}</td></tr>`).join('')}
           </tbody></table>` : `<div class="empty"><div class="ic">◐</div><h4>피드백이 없습니다</h4>
             <p>담당자가 영향 건 상세에서 오탐 여부를 라벨링하면 이곳에 집계됩니다.</p></div>`}
         </div></div>
         <div class="card"><div class="hd"><h3>이벤트별 오탐율</h3></div><div class="bd">
           ${f.byEvent.length ? f.byEvent.map(b => `<div style="margin-bottom:12px">
-            <div style="font-size:12px;margin-bottom:5px">${esc(b.eventTitle || b.eventId)}</div>
+            <div style="font-size:14px;margin-bottom:5px">${esc(b.eventTitle || b.eventId)}</div>
             <div class="gradebar"><span class="nm">오탐</span>
               <span class="tr"><span class="fl" style="width:${(b.falsePositive / b.total) * 100}%;background:var(--g-crit)"></span></span>
               <span class="ct">${b.falsePositive}/${b.total}</span></div></div>`).join('')
-            : '<div class="muted" style="font-size:12px">집계된 데이터가 없습니다.</div>'}
+            : '<div class="muted" style="font-size:14px">집계된 데이터가 없습니다.</div>'}
         </div></div>
       </div>`,
     mount(page) { page.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => location.hash = `#/matches/${tr.dataset.id}`); }};
@@ -635,11 +636,11 @@ export async function audit() {
   const r = await api.get('/admin/audit-logs', { size: 100 });
   return { title:'감사 로그', crumb:'시스템 변경 이력',
     html:`<div class="card"><div class="bd flush"><table><thead><tr>
-      <th style="width:130px">일시</th><th style="width:120px">수행자</th><th style="width:180px">액션</th>
-      <th style="width:150px">대상</th><th>내용</th><th style="width:110px">IP</th></tr></thead><tbody>
-      ${r.items.map(a => `<tr><td class="mono" style="font-size:11px">${dt(a.createdAt)}</td>
+      <th style="width:156px">일시</th><th style="width:144px">수행자</th><th style="width:216px">액션</th>
+      <th style="width:180px">대상</th><th>내용</th><th style="width:132px">IP</th></tr></thead><tbody>
+      ${r.items.map(a => `<tr><td class="mono" style="font-size:12.5px">${dt(a.createdAt)}</td>
         <td>${esc(a.actorName)}</td><td><span class="chip">${esc(a.action)}</span></td>
-        <td class="mono" style="font-size:11px">${esc(a.targetType)} / ${esc(a.targetId)}</td>
-        <td>${esc(a.detail)}</td><td class="mono" style="font-size:11px;color:var(--fg-3)">${esc(a.ip)}</td></tr>`).join('')}
+        <td class="mono" style="font-size:12.5px">${esc(a.targetType)} / ${esc(a.targetId)}</td>
+        <td>${esc(a.detail)}</td><td class="mono" style="font-size:12.5px;color:var(--fg-3)">${esc(a.ip)}</td></tr>`).join('')}
     </tbody></table></div></div>`};
 }

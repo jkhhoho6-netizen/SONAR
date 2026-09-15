@@ -76,7 +76,7 @@ export function shipmentSummaryDto(s) {
     companyName:(findCompany(s.companyId) || {}).name,
     ownerUserId:s.ownerUserId, ownerName:(findUser(s.ownerUserId) || {}).name,
     commodity:s.commodity, cargoValueUsd:s.cargoValueUsd, currency:s.currency,
-    containerType:s.containerType, containerCount:s.containerCount,
+    customerName:s.customerName, containerType:s.containerType, containerCount:s.containerCount,
     originPort:portRef(s.originPortId), destinationPort:portRef(s.destinationPortId),
     etd:s.etd, eta:s.eta, customerDueDate:s.customerDueDate,
     alternativeRouteAvailable:s.alternativeRouteAvailable,
@@ -89,7 +89,7 @@ export function shipmentDetailDto(s) {
   return {
     ...shipmentSummaryDto(s),
     incoterms:s.incoterms, containerNo:s.containerNo, weightKg:s.weightKg,
-    customerName:s.customerName, memo:s.memo, rejectReason:s.rejectReason,
+    memo:s.memo, rejectReason:s.rejectReason,
     approvedAt:s.approvedAt, approvedBy:s.approvedBy,
     approverName:(findUser(s.approvedBy) || {}).name || null,
     routePoints:(s.routePoints || []).map(rp => ({ seq:rp.seq, expectedPassageDate:rp.expectedPassageDate, chokePoint:chokeRef(rp.chokePointId) })),

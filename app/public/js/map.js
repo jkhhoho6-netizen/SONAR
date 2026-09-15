@@ -17,18 +17,18 @@ function vesselIcon(v, selected) {
 
 function popupHtml(v) {
   return `<div style="min-width:220px">
-    <div style="font-weight:600;font-size:13px;margin-bottom:2px">${esc(v.vesselName || '-')}</div>
-    <div style="font-family:var(--mono);font-size:10.5px;color:var(--fg-3);margin-bottom:9px">
+    <div style="font-weight:600;font-size:15px;margin-bottom:2px">${esc(v.vesselName || '-')}</div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--fg-3);margin-bottom:9px">
       IMO ${esc(v.imoNo || '-')} · ${esc(v.carrierName || '-')} · ${esc(v.voyageNo || '')}</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
-      <span style="font-family:var(--mono);font-size:22px;font-weight:700;color:${riskColor(v.topRiskScore)}">${v.topRiskScore || 0}</span>
-      <span style="font-size:11px;color:var(--fg-3)">리스크 점수 · ${GRADE_LABEL[v.topRiskGrade] || '없음'}</span>
+      <span style="font-family:var(--mono);font-size:25.5px;font-weight:700;color:${riskColor(v.topRiskScore)}">${v.topRiskScore || 0}</span>
+      <span style="font-size:12.5px;color:var(--fg-3)">리스크 점수 · ${GRADE_LABEL[v.topRiskGrade] || '없음'}</span>
     </div>
-    <div style="font-size:11.5px;color:var(--fg-2);border-top:1px solid var(--line);padding-top:8px">
+    <div style="font-size:13px;color:var(--fg-2);border-top:1px solid var(--line);padding-top:8px">
       적재 화물 ${v.shipmentCount}건${v.provisional ? ' <span style="color:var(--warn)">(승인 대기)</span>' : ''}<br>
       ${v.shipments.slice(0,4).map(s => `· ${esc(s.shipmentNo)} <span style="color:var(--fg-3)">${esc(s.commodity)}</span>`).join('<br>')}
     </div>
-    <div style="margin-top:9px;font-size:11px;color:var(--accent);cursor:pointer" data-open-vessel="${esc(v.voyageId)}">영향 건 보기 →</div>
+    <div style="margin-top:9px;font-size:12.5px;color:var(--accent);cursor:pointer" data-open-vessel="${esc(v.voyageId)}">영향 건 보기 →</div>
   </div>`;
 }
 
@@ -126,7 +126,7 @@ function createSvgMap(container, { onSelect } = {}) {
       const col = riskColor(40 + ((z.impactLevel || 3) / 5) * 60);
       const r = Math.max(6, (z.radiusKm || 80) / 28);
       return `<g><circle cx="${px(z.lon)}" cy="${py(z.lat)}" r="${r}" fill="${col}" fill-opacity=".1" stroke="${col}" stroke-opacity=".5"/>
-        <text x="${px(z.lon)}" y="${py(z.lat) - r - 4}" fill="#7d8fa3" font-size="9" text-anchor="middle">${esc(z.areaName)}</text></g>`;
+        <text x="${px(z.lon)}" y="${py(z.lat) - r - 4}" fill="#7d8fa3" font-size="10.5" text-anchor="middle">${esc(z.areaName)}</text></g>`;
     }).join('') : '';
     const routes = state.showRoutes ? state.vessels.map(v => {
       if (!v.waypoints || v.waypoints.length < 2) return '';

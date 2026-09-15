@@ -42,7 +42,7 @@ export async function login() {
           </div>
           <button class="btn primary block" type="submit" id="sb">로그인</button>
         </form>
-        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--fg-3)">
+        <div style="text-align:center;margin-top:14px;font-size:14px;color:var(--fg-3)">
           계정이 없으신가요? <a href="#/signup" style="color:var(--accent)">회원가입 신청</a></div>
         <div class="demo-box">
           <b>데모 계정</b>
@@ -122,7 +122,7 @@ export async function signup() {
           </div>
           <button class="btn primary block" type="submit" id="sb">가입 신청</button>
         </form>
-        <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--fg-3)">
+        <div style="text-align:center;margin-top:14px;font-size:14px;color:var(--fg-3)">
           이미 계정이 있으신가요? <a href="#/login" style="color:var(--accent)">로그인</a></div>
       </div></div></div>`,
     mount(root) {

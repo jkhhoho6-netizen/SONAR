@@ -73,15 +73,15 @@ export async function radar({ user }) {
         rail.innerHTML = `
           <div class="sec">
             <h4>노출 현황 <span class="sp"></span><span class="muted mono">${date(s.baseDate)}</span></h4>
-            <div class="kpis" style="grid-template-columns:1fr 1fr;margin:0">
-              <div class="kpi crit" style="padding:11px 13px"><div class="lb">긴급 대응 필요</div>
+            <div class="kpis" style="grid-template-columns:1fr 1fr;gap:12px;margin:0">
+              <div class="kpi crit" style="padding:15px 17px"><div class="lb">긴급 대응 필요</div>
                 <div class="vl">${(s.gradeCounts.CRITICAL || 0) + (s.gradeCounts.HIGH || 0)}</div><div class="sx">심각 + 높음</div></div>
-              <div class="kpi acc" style="padding:11px 13px"><div class="lb">영향 화물</div>
+              <div class="kpi acc" style="padding:15px 17px"><div class="lb">영향 화물</div>
                 <div class="vl">${s.exposedShipmentCount}</div><div class="sx">추적 ${s.trackedShipmentCount}건 중</div></div>
-              <div class="kpi" style="padding:11px 13px"><div class="lb">노출 화물가액</div>
-                <div class="vl" style="font-size:19px">${money(s.exposedCargoValueUsd)}</div><div class="sx">영향 건 합계</div></div>
-              <div class="kpi" style="padding:11px 13px"><div class="lb">최대 예상 지연</div>
-                <div class="vl">${s.maxExpectedDelayDays}<span style="font-size:14px">일</span></div><div class="sx">미조치 ${s.openMatchCount}건</div></div>
+              <div class="kpi" style="padding:15px 17px"><div class="lb">노출 화물가액</div>
+                <div class="vl" style="font-size:22px">${money(s.exposedCargoValueUsd)}</div><div class="sx">영향 건 합계</div></div>
+              <div class="kpi" style="padding:15px 17px"><div class="lb">최대 예상 지연</div>
+                <div class="vl">${s.maxExpectedDelayDays}<span style="font-size:16px">일</span></div><div class="sx">미조치 ${s.openMatchCount}건</div></div>
             </div>
           </div>
           <div class="sec"><h4>등급별 영향 건 <span class="sp"></span>
@@ -95,21 +95,21 @@ export async function radar({ user }) {
                   <span class="sc" style="color:${riskColor(e.myTopRiskScore)}">${e.myTopRiskScore}</span></div>
                 <div class="ti">${esc(e.title)}</div>
                 <div class="mt"><span>영향 ${e.myImpactedCount}건</span><span>심각도 ${e.severity}/5</span><span>신뢰도 ${pct(e.confidence)}</span></div>
-              </a>`).join('') : `<div class="muted" style="font-size:12px">진행 중인 영향 이벤트가 없습니다.</div>`}
+              </a>`).join('') : `<div class="muted" style="font-size:14px">진행 중인 영향 이벤트가 없습니다.</div>`}
           </div>
-          <div class="sec"><h4>우선순위 영향 건 <span class="sp"></span><a href="#/matches" style="font-size:11px;color:var(--accent)">전체 보기</a></h4>
+          <div class="sec"><h4>우선순위 영향 건 <span class="sp"></span><a href="#/matches" style="font-size:12.5px;color:var(--accent)">전체 보기</a></h4>
             ${s.priorityMatches.length ? s.priorityMatches.map(m => {
               const v = mapData.vessels.find(x => x.shipments.some(y => y.shipmentId === m.shipmentId));
               const dl = daysLeft(m.exposureDate);
               return `<div class="risk-item gb-${m.riskGrade}" data-match="${m.matchId}" data-voyage="${v ? v.voyageId : ''}">
                 <div class="r1"><span class="no">${esc(m.shipmentNo)}</span>
-                  ${m.provisional ? '<span class="chip warn" style="font-size:9.5px;padding:1px 5px">승인대기</span>' : ''}
+                  ${m.provisional ? '<span class="chip warn" style="font-size:11px;padding:1px 5px">승인대기</span>' : ''}
                   <span class="sc" style="color:${riskColor(m.riskScore)}">${m.riskScore}</span></div>
                 <div class="ti">${esc(m.commodity)} · ${esc(m.areaName || '')} ${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div>
                 <div class="mt"><span>${date(m.exposureDate)}${dl != null ? ` (D${dl >= 0 ? '-' + dl : '+' + -dl})` : ''}</span>
                   <span>지연 +${m.expectedDelayDays}일</span><span>여유 ${m.bufferDays}일</span></div>
               </div>`;
-            }).join('') : `<div class="empty" style="padding:24px 8px"><div class="ic">◎</div><h4>영향 건 없음</h4>
+            }).join('') : `<div class="empty" style="padding:30px 12px"><div class="ic">◎</div><h4>영향 건 없음</h4>
                 <p>현재 등록된 화물 중 진행 중인 리스크 이벤트에 노출된 건이 없습니다.</p></div>`}
           </div>`;
 
@@ -167,24 +167,24 @@ export async function matchList({ user }) {
         if (!r.items.length) { box.innerHTML = `<div class="empty"><div class="ic">▤</div><h4>조건에 맞는 영향 건이 없습니다</h4>
           <p>필터를 변경하거나, 화물을 등록하면 진행 중인 리스크 이벤트와 자동으로 매칭됩니다.</p></div>`; return; }
         box.innerHTML = `<div class="tbl-wrap"><table><thead><tr>
-          <th style="width:74px">점수</th><th style="width:120px">화물번호</th><th>리스크 이벤트</th>
-          <th style="width:150px">매칭 근거</th><th style="width:96px">노출일</th><th style="width:78px">납기여유</th>
-          <th style="width:78px">예상지연</th><th style="width:92px">상태</th></tr></thead><tbody>
+          <th style="width:89px">점수</th><th style="width:144px">화물번호</th><th>리스크 이벤트</th>
+          <th style="width:180px">매칭 근거</th><th style="width:115px">노출일</th><th style="width:94px">납기여유</th>
+          <th style="width:94px">예상지연</th><th style="width:110px">상태</th></tr></thead><tbody>
           ${r.items.map(m => { const dl = daysLeft(m.exposureDate); return `<tr class="clickable" data-id="${m.matchId}">
-            <td><span class="mono" style="font-size:16px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</span></td>
-            <td><div class="mono" style="font-size:11.5px">${esc(m.shipmentNo)}</div>
-                <div class="muted" style="font-size:11px">${esc(m.commodity)}</div>
-                ${m.provisional ? '<span class="chip warn" style="font-size:9.5px;margin-top:3px">승인 대기</span>' : ''}</td>
+            <td><span class="mono" style="font-size:18.5px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</span></td>
+            <td><div class="mono" style="font-size:13px">${esc(m.shipmentNo)}</div>
+                <div class="muted" style="font-size:12.5px">${esc(m.commodity)}</div>
+                ${m.provisional ? '<span class="chip warn" style="font-size:11px;margin-top:3px">승인 대기</span>' : ''}</td>
             <td><div style="display:flex;align-items:center;gap:6px">${EVENT_TYPE_ICON[m.eventType] || '•'}
                 <span>${esc(m.eventTitle)}</span></div>
-                <div class="muted" style="font-size:11px;margin-top:2px">${esc(m.originPort.nameKo)} → ${esc(m.destinationPort.nameKo)} · ${esc(m.vesselName || '선박 미배정')}</div></td>
-            <td><div>${esc(m.areaName || '-')}</div><div class="muted" style="font-size:11px">${esc(MATCH_REASON_LABEL[m.matchReason] || m.matchReason)}</div></td>
-            <td class="mono">${date(m.exposureDate)}<div class="muted" style="font-size:10.5px">${dl != null ? (dl >= 0 ? `D-${dl}` : `D+${-dl}`) : ''}</div></td>
+                <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(m.originPort.nameKo)} → ${esc(m.destinationPort.nameKo)} · ${esc(m.vesselName || '선박 미배정')}</div></td>
+            <td><div>${esc(m.areaName || '-')}</div><div class="muted" style="font-size:12.5px">${esc(MATCH_REASON_LABEL[m.matchReason] || m.matchReason)}</div></td>
+            <td class="mono">${date(m.exposureDate)}<div class="muted" style="font-size:12px">${dl != null ? (dl >= 0 ? `D-${dl}` : `D+${-dl}`) : ''}</div></td>
             <td class="mono ${m.bufferDays <= 3 ? '' : 'muted'}" style="${m.bufferDays <= 3 ? 'color:var(--g-crit)' : ''}">${m.bufferDays}일</td>
             <td class="mono">+${m.expectedDelayDays}일</td>
             <td>${grade(m.riskGrade)}<div style="margin-top:3px">${chip(MATCH_STATUS, m.status)}</div></td></tr>`; }).join('')}
           </tbody></table></div>
-          <div style="padding:11px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--fg-3)" class="mono">
+          <div style="padding:15px 18px;border-top:1px solid var(--line);font-size:13px;color:var(--fg-3)" class="mono">
             총 ${r.total}건 · ${r.page}/${r.totalPages} 페이지</div>`;
         box.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => location.hash = `#/matches/${tr.dataset.id}`);
       }
@@ -230,7 +230,7 @@ export async function matchDetail({ params }) {
               <div class="factorbar"><div class="t"><span>신뢰도 Confidence — LLM 확신도 × 소스 신뢰가중치</span><span>${b.confidenceFactor}</span></div>
                 <div class="tr"><div class="fl" style="width:${b.confidenceFactor * 100}%"></div></div></div>
             </div>
-            <table style="margin-top:14px"><thead><tr><th>노출도 세부</th><th style="width:96px">값</th><th style="width:74px">가중치</th><th>설명</th></tr></thead><tbody>
+            <table style="margin-top:14px"><thead><tr><th>노출도 세부</th><th style="width:115px">값</th><th style="width:89px">가중치</th><th>설명</th></tr></thead><tbody>
               <tr><td>화물 가액</td><td class="mono">${b.exposureDetail.valueNorm}</td><td class="mono muted">0.35</td><td class="muted">${money(m.cargoValueUsd)} / 기준 $2,000,000</td></tr>
               <tr><td>납기 긴급도</td><td class="mono">${b.exposureDetail.urgency}</td><td class="mono muted">0.40</td><td class="muted">납기 여유 ${m.bufferDays}일 / 기준 21일</td></tr>
               <tr><td>경로 경직성</td><td class="mono">${b.exposureDetail.routeRigidity}</td><td class="mono muted">0.25</td><td class="muted">대체 경로 ${m.shipment.alternativeRouteAvailable ? '있음 (0.35)' : '없음 (1.00)'}</td></tr>
@@ -284,7 +284,7 @@ export async function matchDetail({ params }) {
           <div style="display:flex;gap:7px;align-items:center;margin-bottom:9px">
             <span>${EVENT_TYPE_ICON[m.eventType] || '•'}</span><span class="chip">${esc(EVENT_TYPE_LABEL[m.eventType] || m.eventType)}</span>
             <span class="chip">심각도 ${m.event.severity}/5</span></div>
-          <div style="font-size:12.5px;line-height:1.6;margin-bottom:10px">${esc(m.event.title)}</div>
+          <div style="font-size:14.5px;line-height:1.6;margin-bottom:10px">${esc(m.event.title)}</div>
           <dl class="dl"><dt>영향 기간</dt><dd class="mono">${date(m.event.startDate)} ~ ${date(m.event.expectedEndDate)}</dd>
             <dt>신뢰도</dt><dd class="mono">${pct(m.event.confidence)}</dd>
             <dt>영향 지역</dt><dd>${m.event.areaNames.map(a => `<span class="chip" style="margin:1px 2px 1px 0">${esc(a)}</span>`).join('')}</dd></dl>
@@ -295,9 +295,9 @@ export async function matchDetail({ params }) {
           ${m.feedback.length ? m.feedback.map(f => `<div class="banner ${f.isRelevant ? 'ok' : 'err'}" style="margin-bottom:8px">
             <span class="ic">${f.isRelevant ? '✓' : '⚑'}</span><div><b>${f.isRelevant ? '실제 영향 확인' : '오탐 신고'}</b>
             ${f.actualDelayDays != null ? ` · 실제 지연 ${f.actualDelayDays}일` : ''}<br>
-            <span style="font-size:11.5px">${esc(f.comment || '')}</span><br>
-            <span class="mono muted" style="font-size:10.5px">${esc(f.userName)} · ${dt(f.createdAt)}</span></div></div>`).join('')
-            : `<p class="muted" style="font-size:12px;margin:0 0 12px">이 매칭이 실제로 유효했는지 알려주시면 오탐 관리와 매칭 규칙 개선에 반영됩니다.</p>
+            <span style="font-size:13px">${esc(f.comment || '')}</span><br>
+            <span class="mono muted" style="font-size:12px">${esc(f.userName)} · ${dt(f.createdAt)}</span></div></div>`).join('')
+            : `<p class="muted" style="font-size:14px;margin:0 0 12px">이 매칭이 실제로 유효했는지 알려주시면 오탐 관리와 매칭 규칙 개선에 반영됩니다.</p>
             <div style="display:flex;gap:8px"><button class="btn sm" id="fb-yes" style="flex:1">실제 영향 있었음</button>
               <button class="btn sm danger" id="fb-no" style="flex:1">오탐 신고</button></div>`}
         </div></div>
@@ -342,12 +342,12 @@ export async function matchDetail({ params }) {
 }
 
 function renderActions(actions) {
-  if (!actions.length) return `<div class="empty" style="padding:26px"><div class="ic">▤</div><h4>등록된 조치가 없습니다</h4>
+  if (!actions.length) return `<div class="empty" style="padding:34px"><div class="ic">▤</div><h4>등록된 조치가 없습니다</h4>
     <p>위 대응 시나리오를 선택하거나 직접 조치 내용을 입력해 기록하세요.</p></div>`;
   return `<div class="timeline">${actions.map(a => `<div class="tl-item ${a.result === 'DONE' ? 'done' : a.result === 'FAILED' ? 'warn' : 'now'}">
     <div class="d">${dt(a.actedAt)} · ${esc(a.userName || '')}</div>
     <div class="t"><span class="chip">${esc(ACTION_TYPE[a.actionType] || a.actionType)}</span>
-      ${chip(ACTION_RESULT, a.result)} ${a.playbookTitle ? `<span class="muted" style="font-size:11px">${esc(a.playbookTitle)}</span>` : ''}</div>
+      ${chip(ACTION_RESULT, a.result)} ${a.playbookTitle ? `<span class="muted" style="font-size:12.5px">${esc(a.playbookTitle)}</span>` : ''}</div>
     <div class="s">${esc(a.content)}</div>
     ${a.resultNote ? `<div class="s" style="color:var(--ok)">↳ ${esc(a.resultNote)}</div>` : ''}</div>`).join('')}</div>`;
 }
@@ -381,7 +381,7 @@ function openNotifyModal(m) {
 
 function openFeedback(m, isRelevant) {
   modal({ title: isRelevant ? '실제 영향 확인' : '오탐 신고 (FR-09)', body:`
-    <p style="font-size:12.5px;color:var(--fg-2);margin:0 0 14px">
+    <p style="font-size:14.5px;color:var(--fg-2);margin:0 0 14px">
       ${isRelevant ? '이 매칭이 실제 지연·차질로 이어졌다면 실제 지연 일수를 입력해 주세요.'
                    : '이 매칭이 실제로는 영향이 없었던 경우 사유를 남겨 주세요. 매칭 규칙 개선에 사용됩니다.'}</p>
     <form id="ff">
@@ -421,16 +421,16 @@ export async function eventList() {
           <h4>표시할 이벤트가 없습니다</h4><p>조건을 변경해 보세요.</p></div></div></div>`; return; }
         box.innerHTML = `<div class="cols3">${r.items.map(e => `
           <a class="card" href="#/events/${e.eventId}" style="display:block;transition:.13s">
-            <div class="hd"><span style="font-size:15px">${EVENT_TYPE_ICON[e.eventType] || '•'}</span>
+            <div class="hd"><span style="font-size:17px">${EVENT_TYPE_ICON[e.eventType] || '•'}</span>
               <h3>${esc(EVENT_TYPE_LABEL[e.eventType] || e.eventType)}</h3><span class="sp"></span>
               ${e.myImpactedCount ? `<span class="badge g-${e.topRiskGrade}"><i></i>${e.myImpactedCount}건</span>` : '<span class="chip">영향 없음</span>'}</div>
             <div class="bd">
-              <div style="font-size:13px;line-height:1.5;margin-bottom:10px;min-height:39px">${esc(e.title)}</div>
-              <div style="font-size:11.5px;color:var(--fg-3);line-height:1.6;margin-bottom:12px;
+              <div style="font-size:15px;line-height:1.5;margin-bottom:10px;min-height:39px">${esc(e.title)}</div>
+              <div style="font-size:13px;color:var(--fg-3);line-height:1.6;margin-bottom:12px;
                 display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${esc(e.summary)}</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
                 ${e.areaNames.slice(0, 4).map(a => `<span class="chip">${esc(a)}</span>`).join('')}</div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);color:var(--fg-3);
+              <div style="display:flex;justify-content:space-between;font-size:12.5px;font-family:var(--mono);color:var(--fg-3);
                 border-top:1px solid var(--line);padding-top:9px">
                 <span>심각도 ${e.severity}/5 · 신뢰도 ${pct(e.confidence)}</span><span>${date(e.startDate)}~${date(e.expectedEndDate)}</span></div>
             </div></a>`).join('')}</div>`;
@@ -445,12 +445,12 @@ export async function eventDetail({ params }) {
     html:`<div style="margin-bottom:14px"><a class="btn sm ghost" href="#/events">← 이벤트 목록</a></div>
     <div class="cols"><div>
       <div class="card" style="margin-bottom:16px"><div class="hd">
-        <span style="font-size:16px">${EVENT_TYPE_ICON[e.eventType] || '•'}</span>
+        <span style="font-size:18.5px">${EVENT_TYPE_ICON[e.eventType] || '•'}</span>
         <h3>${esc(EVENT_TYPE_LABEL[e.eventType] || e.eventType)}</h3><span class="sp"></span>
         <span class="chip">심각도 ${e.severity}/5</span><span class="chip">신뢰도 ${pct(e.confidence)}</span></div>
         <div class="bd">
-          <h2 style="font-size:17px;margin:0 0 10px;line-height:1.45">${esc(e.title)}</h2>
-          <p style="font-size:13px;color:var(--fg-2);line-height:1.75;margin:0 0 16px">${esc(e.summary)}</p>
+          <h2 style="font-size:19.5px;margin:0 0 10px;line-height:1.45">${esc(e.title)}</h2>
+          <p style="font-size:15px;color:var(--fg-2);line-height:1.75;margin:0 0 16px">${esc(e.summary)}</p>
           <dl class="dl"><dt>영향 기간</dt><dd class="mono">${date(e.startDate)} ~ ${date(e.expectedEndDate)}</dd>
             <dt>정형화</dt><dd class="mono">${esc(e.llmModel)} · ${dt(e.llmExtractedAt)}</dd>
             <dt>검토</dt><dd>${esc(e.reviewerName || '-')} · ${dt(e.reviewedAt)}</dd>
@@ -459,24 +459,24 @@ export async function eventDetail({ params }) {
 
       <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 지역 (FR-02)</h3><span class="sp"></span>
         <span class="meta">${e.areas.length}개 지역</span></div><div class="bd flush">
-        <table><thead><tr><th style="width:96px">구분</th><th>지역</th><th style="width:96px">영향도</th>
-          <th style="width:106px">예상 지연</th><th style="width:96px">내 화물</th></tr></thead><tbody>
+        <table><thead><tr><th style="width:115px">구분</th><th>지역</th><th style="width:115px">영향도</th>
+          <th style="width:127px">예상 지연</th><th style="width:115px">내 화물</th></tr></thead><tbody>
           ${e.areas.map(a => { const cnt = e.matches.filter(m => m.areaName === a.areaName).length;
             return `<tr><td>${a.areaType === 'PORT' ? '<span class="chip">항만</span>' : '<span class="chip info">해상 요충지</span>'}</td>
-            <td>${esc(a.areaName)} <span class="muted mono" style="font-size:11px">${esc((a.port && a.port.unlocode) || (a.chokePoint && a.chokePoint.code) || '')}</span></td>
+            <td>${esc(a.areaName)} <span class="muted mono" style="font-size:12.5px">${esc((a.port && a.port.unlocode) || (a.chokePoint && a.chokePoint.code) || '')}</span></td>
             <td><span class="mono">${a.impactLevel}/5</span></td><td class="mono">+${a.expectedDelayDays}일</td>
             <td>${cnt ? `<span class="badge g-HIGH"><i></i>${cnt}건</span>` : '<span class="muted">-</span>'}</td></tr>`; }).join('')}
         </tbody></table></div></div>
 
       <div class="card"><div class="hd"><h3>내 화물 영향 건 (FR-03)</h3><span class="sp"></span>
         <span class="meta">${e.matches.length}건</span></div><div class="bd flush">
-        ${e.matches.length ? `<table><thead><tr><th style="width:66px">점수</th><th>화물</th>
-          <th style="width:140px">매칭 근거</th><th style="width:96px">노출일</th><th style="width:88px">상태</th></tr></thead><tbody>
+        ${e.matches.length ? `<table><thead><tr><th style="width:79px">점수</th><th>화물</th>
+          <th style="width:168px">매칭 근거</th><th style="width:115px">노출일</th><th style="width:106px">상태</th></tr></thead><tbody>
           ${e.matches.map(m => `<tr class="clickable" data-id="${m.matchId}">
-            <td class="mono" style="font-size:15px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</td>
-            <td><div class="mono" style="font-size:11.5px">${esc(m.shipmentNo)}</div>
-              <div class="muted" style="font-size:11px">${esc(m.commodity)} · ${esc(m.vesselName || '-')}</div></td>
-            <td><div>${esc(m.areaName)}</div><div class="muted" style="font-size:11px">${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div></td>
+            <td class="mono" style="font-size:17px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</td>
+            <td><div class="mono" style="font-size:13px">${esc(m.shipmentNo)}</div>
+              <div class="muted" style="font-size:12.5px">${esc(m.commodity)} · ${esc(m.vesselName || '-')}</div></td>
+            <td><div>${esc(m.areaName)}</div><div class="muted" style="font-size:12.5px">${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div></td>
             <td class="mono">${date(m.exposureDate)}</td><td>${grade(m.riskGrade)}</td></tr>`).join('')}</tbody></table>`
           : `<div class="empty"><div class="ic">✓</div><h4>영향받는 화물이 없습니다</h4>
              <p>이 이벤트의 영향 지역·기간과 겹치는 운송 건이 없습니다.</p></div>`}
@@ -488,12 +488,12 @@ export async function eventDetail({ params }) {
             <span class="chip info">${esc(e.source.sourceName)}</span>
             <span class="chip">${esc(e.source.sourceType)}</span>
             <span class="chip">신뢰가중치 ${e.source.trustWeight}</span></div>
-          <div style="font-size:12.5px;font-weight:600;line-height:1.5;margin-bottom:9px">${esc(e.source.title)}</div>
-          <div style="font-size:11.5px;color:var(--fg-3);line-height:1.75;max-height:280px;overflow:auto;
+          <div style="font-size:14.5px;font-weight:600;line-height:1.5;margin-bottom:9px">${esc(e.source.title)}</div>
+          <div style="font-size:13px;color:var(--fg-3);line-height:1.75;max-height:280px;overflow:auto;
             background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:11px">${esc(e.source.body)}</div>
           <dl class="dl" style="margin-top:12px"><dt>발행</dt><dd class="mono">${dt(e.source.publishedAt)}</dd>
             <dt>수집</dt><dd class="mono">${dt(e.source.collectedAt)}</dd>
-            <dt>원문</dt><dd><a href="${esc(e.source.url)}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:11px">${esc(e.source.url)}</a></dd></dl>`
+            <dt>원문</dt><dd><a href="${esc(e.source.url)}" target="_blank" style="color:var(--accent);word-break:break-all;font-size:12.5px">${esc(e.source.url)}</a></dd></dl>`
           : '<div class="muted">원문 정보가 없습니다.</div>'}
       </div></div>
     </div></div>`,
@@ -528,24 +528,24 @@ export async function shipmentList({ user }) {
           <p>화물과 항로를 등록하면 진행 중인 리스크 이벤트와 자동으로 매칭되어 지도에 표시됩니다.</p>
           <a class="btn primary" style="margin-top:14px" href="#/shipments/new">첫 화물 등록하기</a></div>`; return; }
         box.innerHTML = `<div class="tbl-wrap"><table><thead><tr>
-          <th style="width:126px">화물번호</th><th>품목 / 고객사</th><th style="width:186px">운송 구간</th>
-          <th style="width:110px">일정</th><th style="width:106px">가액</th><th style="width:118px">상태</th>
-          <th style="width:106px">리스크</th></tr></thead><tbody>
+          <th style="width:151px">화물번호</th><th>품목 / 고객사</th><th style="width:223px">운송 구간</th>
+          <th style="width:132px">일정</th><th style="width:127px">가액</th><th style="width:142px">상태</th>
+          <th style="width:127px">리스크</th></tr></thead><tbody>
           ${r.items.map(s => `<tr class="clickable" data-id="${s.shipmentId}">
-            <td><div class="mono" style="font-size:11.5px">${esc(s.shipmentNo)}</div>
-              <div class="muted" style="font-size:10.5px">${esc(s.ownerName || '')}</div></td>
-            <td><div>${esc(s.commodity)}</div><div class="muted" style="font-size:11px">${esc(s.customerName || '-')}</div></td>
+            <td><div class="mono" style="font-size:13px">${esc(s.shipmentNo)}</div>
+              <div class="muted" style="font-size:12px">${esc(s.ownerName || '')}</div></td>
+            <td><div>${esc(s.commodity)}</div><div class="muted" style="font-size:12.5px">${esc(s.customerName || '-')}</div></td>
             <td><div>${esc(s.originPort.nameKo)} → ${esc(s.destinationPort.nameKo)}</div>
-              <div class="muted" style="font-size:11px">${esc(s.vessel ? s.vessel.vesselName : '선박 미배정')}</div></td>
-            <td class="mono" style="font-size:11px">${date(s.etd)}<br><span class="muted">${date(s.eta)}</span></td>
+              <div class="muted" style="font-size:12.5px">${esc(s.vessel ? s.vessel.vesselName : '선박 미배정')}</div></td>
+            <td class="mono" style="font-size:12.5px">${date(s.etd)}<br><span class="muted">${date(s.eta)}</span></td>
             <td class="mono">${money(s.cargoValueUsd)}</td>
             <td>${chip(SHIPMENT_STATUS, s.status)}</td>
             <td>${s.topRiskGrade === 'NONE' ? '<span class="chip ok">영향 없음</span>'
               : `<div style="display:flex;align-items:center;gap:6px">
-                 <span class="mono" style="font-size:15px;font-weight:600;color:${riskColor(s.topRiskScore)}">${s.topRiskScore}</span>
-                 ${grade(s.topRiskGrade)}</div><div class="muted" style="font-size:10.5px;margin-top:2px">${s.matchCount || 0}건 매칭</div>`}</td>
+                 <span class="mono" style="font-size:17px;font-weight:600;color:${riskColor(s.topRiskScore)}">${s.topRiskScore}</span>
+                 ${grade(s.topRiskGrade)}</div><div class="muted" style="font-size:12px;margin-top:2px">${s.matchCount || 0}건 매칭</div>`}</td>
           </tr>`).join('')}</tbody></table></div>
-          <div style="padding:11px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--fg-3)" class="mono">총 ${r.total}건</div>`;
+          <div style="padding:15px 18px;border-top:1px solid var(--line);font-size:13px;color:var(--fg-3)" class="mono">총 ${r.total}건</div>`;
         box.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => location.hash = `#/shipments/${tr.dataset.id}`);
       }
       await load();
@@ -602,7 +602,7 @@ export async function shipmentNew() {
               <div class="hint">배정하면 해당 선박의 현재 위치가 리스크 레이더 지도에 표시됩니다.</div></div>
           </div>
           <label class="check" style="margin-bottom:14px"><input type="checkbox" name="preferCapeRoute">
-            <span><b>희망봉 우회 항로 적용</b><br><span class="muted" style="font-size:11.5px">수에즈·홍해 대신 아프리카 남단으로 우회합니다. 항해일수는 늘지만 홍해 리스크에서 제외됩니다.</span></span></label>
+            <span><b>희망봉 우회 항로 적용</b><br><span class="muted" style="font-size:13px">수에즈·홍해 대신 아프리카 남단으로 우회합니다. 항해일수는 늘지만 홍해 리스크에서 제외됩니다.</span></span></label>
           <button class="btn" type="button" id="calc">경유 요충지 · 도착 예정일 자동 산출</button>
           <div id="plan" style="margin-top:14px"></div>
           <div style="display:flex;justify-content:space-between;margin-top:16px">
@@ -618,7 +618,7 @@ export async function shipmentNew() {
               <div class="hint">ETA와의 차이(납기 여유)가 리스크 점수의 긴급도에 반영됩니다.</div></div>
           </div>
           <label class="check" style="margin-bottom:14px"><input type="checkbox" name="alternativeRouteAvailable">
-            <span><b>대체 경로 확보 가능</b><br><span class="muted" style="font-size:11.5px">우회 항로·대체 선복·항공 전환이 가능한 건입니다. 체크 시 경로 경직성이 1.00 → 0.35로 낮아져 리스크 점수가 감소합니다.</span></span></label>
+            <span><b>대체 경로 확보 가능</b><br><span class="muted" style="font-size:13px">우회 항로·대체 선복·항공 전환이 가능한 건입니다. 체크 시 경로 경직성이 1.00 → 0.35로 낮아져 리스크 점수가 감소합니다.</span></span></label>
           <div class="field" data-field="memo"><label>메모</label><textarea name="memo" placeholder="특이사항"></textarea></div>
           <div id="preview"></div>
           <div class="banner info" style="margin-top:14px"><span class="ic">ℹ</span><div>
@@ -654,7 +654,7 @@ export async function shipmentNew() {
           box.innerHTML = `<div class="banner err"><span class="ic">⛔</span><div>출발항과 도착항이 동일합니다.</div></div>`; return;
         }
         page.querySelector('[data-field="destinationPortId"]').classList.remove('bad');
-        box.innerHTML = `<div class="loading" style="padding:20px"><span class="spin"></span></div>`;
+        box.innerHTML = `<div class="loading" style="padding:26px"><span class="spin"></span></div>`;
         try {
           const p = await api.post('/routes/preview', { originPortId:f.originPortId.value,
             destinationPortId:f.destinationPortId.value, etd:f.etd.value, preferCapeRoute:f.preferCapeRoute.checked });
@@ -668,9 +668,9 @@ export async function shipmentNew() {
             (평균 ${p.assumedSpeedKn}kn 가정) · 도착 예정 <b>${date(p.eta)}</b></div></div>
             ${p.routePoints.length ? `<div class="card"><div class="hd"><h3>통과 예정 해상 요충지</h3><span class="sp"></span>
               <span class="meta">FR-03 매칭 기준 데이터</span></div><div class="bd flush">
-              <table><thead><tr><th style="width:50px">순번</th><th>요충지</th><th style="width:130px">통과 예정일</th></tr></thead><tbody>
+              <table><thead><tr><th style="width:60px">순번</th><th>요충지</th><th style="width:156px">통과 예정일</th></tr></thead><tbody>
               ${p.routePoints.map(r => `<tr><td class="mono">${r.seq}</td><td>${esc(r.nameKo)}
-                <span class="muted mono" style="font-size:11px">${esc(r.code)}</span></td>
+                <span class="muted mono" style="font-size:12.5px">${esc(r.code)}</span></td>
                 <td class="mono">${date(r.expectedPassageDate)}</td></tr>`).join('')}</tbody></table></div></div>`
               : `<div class="banner info"><span class="ic">ℹ</span><div>이 구간은 통과하는 주요 해상 요충지가 없습니다. 항만 단위 리스크만 매칭됩니다.</div></div>`}`;
           renderPreview();
@@ -735,7 +735,7 @@ export async function shipmentDetail({ params }) {
   return { title:`화물 ${s.shipmentNo}`, crumb:`${esc(s.companyName)} · ${esc(s.commodity)}`,
     html:`<div style="margin-bottom:14px"><a class="btn sm ghost" href="#/shipments">← 화물 목록</a></div>
     ${s.status === 'REJECTED' ? `<div class="banner err"><span class="ic">⛔</span><div><b>등록이 반려되었습니다.</b><br>
-      ${esc(s.rejectReason || '')}<br><span style="font-size:11.5px">내용을 수정하면 다시 승인 대기 상태로 전환됩니다.</span></div></div>` : ''}
+      ${esc(s.rejectReason || '')}<br><span style="font-size:13px">내용을 수정하면 다시 승인 대기 상태로 전환됩니다.</span></div></div>` : ''}
     ${s.status === 'PENDING_APPROVAL' ? `<div class="banner warn"><span class="ic">⏳</span><div>
       <b>관리자 승인 대기 중입니다.</b> 아래 리스크 분석은 잠정 결과이며, 승인 후 알림 발송 대상이 됩니다.</div></div>` : ''}
     <div class="cols"><div>
@@ -744,19 +744,19 @@ export async function shipmentDetail({ params }) {
           <div class="lb">최고 리스크 점수</div><div class="vl" style="color:${riskColor(s.topRiskScore)}">${s.topRiskScore}</div>
           <div class="sx">${GRADE_LABEL[s.topRiskGrade] || '영향 없음'}</div></div>
         <div class="kpi"><div class="lb">매칭된 이벤트</div><div class="vl">${s.matches.length}</div><div class="sx">미조치 ${s.openMatchCount}건</div></div>
-        <div class="kpi"><div class="lb">최대 예상 지연</div><div class="vl">${s.maxExpectedDelayDays}<span style="font-size:14px">일</span></div><div class="sx">누적 아님, 최대값</div></div>
+        <div class="kpi"><div class="lb">최대 예상 지연</div><div class="vl">${s.maxExpectedDelayDays}<span style="font-size:16px">일</span></div><div class="sx">누적 아님, 최대값</div></div>
         <div class="kpi ${buf != null && buf <= 3 ? 'crit' : ''}"><div class="lb">납기 여유</div>
-          <div class="vl">${buf == null ? '-' : buf}<span style="font-size:14px">일</span></div><div class="sx">ETA 대비 고객 납기</div></div>
+          <div class="vl">${buf == null ? '-' : buf}<span style="font-size:16px">일</span></div><div class="sx">ETA 대비 고객 납기</div></div>
       </div>
 
       <div class="card" style="margin-bottom:16px"><div class="hd"><h3>영향 건 (FR-03 매칭 결과)</h3><span class="sp"></span>
         <span class="meta">${s.matches.length}건</span></div><div class="bd flush">
-        ${s.matches.length ? `<table><thead><tr><th style="width:66px">점수</th><th>리스크 이벤트</th>
-          <th style="width:150px">매칭 근거</th><th style="width:96px">노출일</th><th style="width:96px">상태</th></tr></thead><tbody>
+        ${s.matches.length ? `<table><thead><tr><th style="width:79px">점수</th><th>리스크 이벤트</th>
+          <th style="width:180px">매칭 근거</th><th style="width:115px">노출일</th><th style="width:115px">상태</th></tr></thead><tbody>
           ${s.matches.map(m => `<tr class="clickable" data-id="${m.matchId}">
-            <td class="mono" style="font-size:15px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</td>
+            <td class="mono" style="font-size:17px;font-weight:600;color:${riskColor(m.riskScore)}">${m.riskScore}</td>
             <td><div style="display:flex;gap:6px;align-items:center">${EVENT_TYPE_ICON[m.eventType] || '•'}<span>${esc(m.eventTitle)}</span></div></td>
-            <td><div>${esc(m.areaName)}</div><div class="muted" style="font-size:11px">${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div></td>
+            <td><div>${esc(m.areaName)}</div><div class="muted" style="font-size:12.5px">${esc(MATCH_REASON_LABEL[m.matchReason] || '')}</div></td>
             <td class="mono">${date(m.exposureDate)}</td>
             <td>${grade(m.riskGrade)}<div style="margin-top:3px">${chip(MATCH_STATUS, m.status)}</div></td></tr>`).join('')}
           </tbody></table>` : `<div class="empty"><div class="ic">✓</div><h4>현재 노출된 리스크가 없습니다</h4>
@@ -779,7 +779,7 @@ export async function shipmentDetail({ params }) {
           <dt>고객사</dt><dd>${esc(s.customerName || '-')}</dd>
           <dt>가액</dt><dd class="mono">${money(s.cargoValueUsd)}</dd>
           <dt>인코텀즈</dt><dd>${esc(s.incoterms)}</dd>
-          <dt>컨테이너</dt><dd>${esc(s.containerType)} × ${s.containerCount} ${s.containerNo ? `<br><span class="mono muted" style="font-size:11px">${esc(s.containerNo)}</span>` : ''}</dd>
+          <dt>컨테이너</dt><dd>${esc(s.containerType)} × ${s.containerCount} ${s.containerNo ? `<br><span class="mono muted" style="font-size:12.5px">${esc(s.containerNo)}</span>` : ''}</dd>
           <dt>중량</dt><dd class="mono">${num(s.weightKg)} kg</dd>
           <dt>대체 경로</dt><dd>${s.alternativeRouteAvailable ? '<span class="chip ok">확보 가능</span>' : '<span class="chip warn">없음</span>'}</dd>
           <dt>담당자</dt><dd>${esc(s.ownerName || '-')}</dd>
@@ -792,7 +792,7 @@ export async function shipmentDetail({ params }) {
           <div class="d">${date(r.expectedPassageDate)}</div>
           <div class="t">${esc(r.chokePoint ? r.chokePoint.nameKo : '-')}</div>
           <div class="s mono">${esc(r.chokePoint ? r.chokePoint.code : '')}</div></div>`).join('')}</div>`
-          : '<div class="muted" style="font-size:12px">통과하는 주요 해상 요충지가 없습니다.</div>'}
+          : '<div class="muted" style="font-size:14px">통과하는 주요 해상 요충지가 없습니다.</div>'}
       </div></div>
     </div></div>`,
     mount(page) { page.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => location.hash = `#/matches/${tr.dataset.id}`); }};
@@ -828,17 +828,17 @@ export async function notifications() {
         if (!r.items.length) { box.innerHTML = `<div class="card"><div class="bd"><div class="empty"><div class="ic">✉</div>
           <h4>알림이 없습니다</h4><p>리스크 점수가 임계값을 초과하면 자동으로 알림이 발송됩니다.</p></div></div></div>`; return; }
         box.innerHTML = `<div class="card"><div class="bd flush"><table><thead><tr>
-          <th style="width:100px">채널·범위</th><th>내용</th><th style="width:120px">관련 화물</th>
-          <th style="width:126px">일시</th><th style="width:110px">상태</th></tr></thead><tbody>
+          <th style="width:120px">채널·범위</th><th>내용</th><th style="width:144px">관련 화물</th>
+          <th style="width:151px">일시</th><th style="width:132px">상태</th></tr></thead><tbody>
           ${r.items.map(n => `<tr ${n.matchId ? `class="clickable" data-id="${n.matchId}"` : ''} data-noti="${n.notificationId}"
             style="${!n.readAt && n.status === 'SENT' ? 'background:rgba(34,211,238,.04)' : ''}">
             <td><div class="chip">${esc(CHANNEL_LABEL[n.channel] || n.channel)}</div>
               <div style="margin-top:3px">${n.scope === 'EXTERNAL' ? '<span class="chip warn">대외</span>' : '<span class="chip">사내</span>'}</div></td>
             <td><div style="font-weight:${!n.readAt && n.status === 'SENT' ? '600' : '400'}">${esc(n.title)}</div>
-              <div class="muted" style="font-size:11.5px;margin-top:2px">${esc(n.message)}</div>
-              ${n.failReason ? `<div style="color:var(--err);font-size:11px;margin-top:3px">↳ ${esc(n.failReason)}</div>` : ''}</td>
-            <td class="mono" style="font-size:11px">${esc(n.shipmentNo || '-')}</td>
-            <td class="mono" style="font-size:11px">${dt(n.sentAt || n.createdAt)}</td>
+              <div class="muted" style="font-size:13px;margin-top:2px">${esc(n.message)}</div>
+              ${n.failReason ? `<div style="color:var(--err);font-size:12.5px;margin-top:3px">↳ ${esc(n.failReason)}</div>` : ''}</td>
+            <td class="mono" style="font-size:12.5px">${esc(n.shipmentNo || '-')}</td>
+            <td class="mono" style="font-size:12.5px">${dt(n.sentAt || n.createdAt)}</td>
             <td>${chip(NOTI_STATUS, n.status)}</td></tr>`).join('')}
         </tbody></table></div></div>`;
         box.querySelectorAll('tr[data-noti]').forEach(tr => tr.onclick = async () => {
