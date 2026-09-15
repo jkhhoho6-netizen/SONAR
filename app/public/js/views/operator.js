@@ -140,7 +140,7 @@ export async function radar({ user }) {
 
 /* ═══════════ 영향 건 목록 ═══════════ */
 export async function matchList({ user }) {
-  return { title:'영향 건 목록', crumb:'FR-03 매칭 결과 / FR-04 리스크 점수',
+  return { title:'영향 건 목록',
     html:`<div class="toolbar">
         <div class="seg" id="g-seg"><button data-g="" class="on">전체 등급</button>
           ${GRADES.map(g => `<button data-g="${g}">${GRADE_LABEL[g]}</button>`).join('')}</div>
@@ -400,7 +400,7 @@ function openFeedback(m, isRelevant) {
 
 /* ═══════════ 리스크 이벤트 목록 / 상세 ═══════════ */
 export async function eventList() {
-  return { title:'리스크 이벤트', crumb:'FR-01 수집 / FR-02 정형화 결과',
+  return { title:'리스크 이벤트',
     html:`<div class="toolbar">
       <div class="seg" id="f-seg"><button data-only="" class="on">전체 이벤트</button><button data-only="true">내 화물 영향</button></div>
       <select id="type" style="min-width:150px"><option value="">전체 유형</option>
@@ -557,7 +557,7 @@ export async function shipmentNew() {
   const [ports, voyages] = await Promise.all([ api.get('/ports'), api.get('/voyages') ]);
   const opt = sel => ports.items.map(p => `<option value="${p.portId}" ${p.portId === sel ? 'selected' : ''}>${esc(p.nameKo)} (${p.unlocode})</option>`).join('');
   const today = new Date().toISOString().slice(0, 10);
-  return { title:'화물 등록', crumb:'등록 → 경유 요충지 산출 → 관리자 승인',
+  return { title:'화물 등록',
     html:`<div style="max-width:940px">
       <div class="steps">
         <div class="step on" data-step="1"><span class="n">1</span>화물 정보</div><div class="step-line"></div>
@@ -812,7 +812,7 @@ function buildSchedule(s) {
 
 /* ═══════════ 알림 센터 (FR-07) ═══════════ */
 export async function notifications() {
-  return { title:'알림 센터', crumb:'FR-07 알림 발송 이력',
+  return { title:'알림 센터',
     html:`<div class="toolbar"><div class="seg" id="f-seg">
         <button data-s="" class="on">전체</button><button data-s="SENT">발송 완료</button>
         <button data-s="PENDING_APPROVAL">승인 대기</button><button data-s="FAILED,REJECTED">실패·반려</button></div></div>
