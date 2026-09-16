@@ -1,0 +1,2547 @@
+openapi: 3.0.3
+
+info:
+  title: SONAR API
+  version: 1.0.0
+  description: |
+    # SONAR — 해상물류 공급망 리스크 레이더
+
+    뉴스는 바다가 위험하다고 말하지만 내 화물이 위험한지는 말해주지 않는다.
+    SONAR 는 수집된 리스크 이벤트와 사용자의 운송 건을 연결해 "내 화물 중 무엇이 위험한가"를 답한다.
+
+    ## 화면 ↔ API 대응
+    모든 오퍼레이션에는 `x-screen` 확장 필드가 있으며, UI 흐름도의 화면 ID 와 1:1로 대응한다.
+    `x-implemented: false` 는 명세에는 정의되어 있으나 프로토타입에서 아직 화면에 연결하지 않은 오퍼레이션이다.
+
+    | 화면 ID | 화면명 | 액터 |
+    |---|---|---|
+    | `01_login` | 로그인 | 공통 |
+    | `02_signup` | 회원가입 신청 | 공통 |
+    | `00_shell` | 공통 셸 (사이드바 배지 · 세션) | 공통 |
+    | `10_radar` | 리스크 레이더 | 담당자 · 관리자 |
+    | `11_match_list` | 영향 건 목록 | 담당자 |
+    | `12_match_detail` | 영향 건 상세 | 담당자 |
+    | `12a_action_create` | 대응 시나리오 · 조치 등록 | 담당자 |
+    | `12b_notify_request` | 알림 발송 요청 | 담당자 |
+    | `12c_feedback` | 매칭 피드백 · 오탐 신고 | 담당자 |
+    | `13_event_list` | 리스크 이벤트 목록 | 담당자 |
+    | `14_event_detail` | 리스크 이벤트 상세 | 담당자 |
+    | `15_shipment_list` | 내 화물 목록 | 담당자 |
+    | `16_shipment_create` | 화물 등록 | 담당자 |
+    | `16a_route_preview` | 경유 요충지 자동 산출 | 담당자 |
+    | `17_shipment_detail` | 화물 상세 | 담당자 |
+    | `18_notification_center` | 알림 센터 | 담당자 |
+    | `20_admin_overview` | 운영 대시보드 | 관리자 |
+    | `22_event_monitor` | 이벤트 모니터링 | 관리자 |
+    | `23_event_review` | 이벤트 검토 · 영향 지역 매핑 | 관리자 |
+    | `24_feed_list` | 수집 원문 | 관리자 |
+    | `25_source_config` | 수집 소스 관리 | 관리자 |
+    | `26_threshold_config` | 임계값 · 기준 설정 | 관리자 |
+    | `27_user_approval` | 회원 관리 | 관리자 |
+    | `28_shipment_approval` | 화물 등록 승인 | 관리자 |
+    | `29_notification_approval` | 알림 발송 승인 | 관리자 |
+    | `30_feedback_summary` | 매칭 피드백 | 관리자 |
+    | `31_audit_log` | 감사 로그 | 관리자 |
+
+    ## 공통 규약
+    - 모든 요청·응답 본문은 `application/json; charset=utf-8`
+    - 인증은 `Authorization: Bearer {accessToken}` 헤더로 수행한다.
+      (과제 범위상 Security Schemes 정의는 제외)
+    - 목록 응답은 `items` + `page` / `size` / `total` / `totalPages` 를 공통으로 갖는다.
+    - 오류 응답은 전 오퍼레이션이 동일한 `Error` 스키마를 사용한다.
+    - 권한: `OPERATOR` 는 자기 회사(테넌트) 데이터만, `ADMIN` 은 전체를 조회한다.
+      `/admin/**` 경로는 `ADMIN` 전용이며 그 외 접근 시 403 을 반환한다.
+
+servers:
+  - url: http://localhost:4173/api/v1
+    description: 로컬 프로토타입
+
+tags:
+  - name: Auth
+    description: 인증 및 회원가입
+  - name: Master
+    description: 항만 · 해상 요충지 · 선박 등 기준 정보
+  - name: Dashboard
+    description: 리스크 레이더 지도 및 요약 지표
+  - name: Shipment
+    description: 화물(운송 건) 등록 및 조회
+  - name: RiskEvent
+    description: 정형화된 리스크 이벤트 조회
+  - name: Match
+    description: 영향 건 매칭 결과 · 대응 · 피드백
+  - name: Notification
+    description: 알림 발송 및 수신함
+  - name: Admin
+    description: 시스템 관리자 전용 (승인 · 파이프라인 · 기준 설정)
+
+paths:
+
+  # ══════════════════ Auth ══════════════════
+
+  /auth/signup:
+    post:
+      tags: [Auth]
+      operationId: signup
+      summary: 회원가입 신청
+      description: |
+        가입 신청을 접수한다. 계정은 `PENDING` 상태로 생성되며 관리자 승인 전에는 로그인할 수 없다.
+        `companyId` 를 보내면 기존 회사에 소속되고, 생략하고 `companyName` 을 보내면 회사를 새로 등록한다.
+      x-screen: [02_signup]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        '201':
+          description: 신청 접수됨
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/User'
+                  - type: object
+                    properties:
+                      message: { type: string, example: 가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다. }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 이미 가입된 이메일
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: DUPLICATE_EMAIL, message: 이미 가입된 이메일입니다., timestamp: '2026-09-16T01:20:00.000Z' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      summary: 로그인
+      description: |
+        이메일·비밀번호로 인증하고 액세스 토큰을 발급한다.
+        계정 상태가 `ACTIVE` 가 아니면 사유별로 구분된 403 을 반환한다 (예외 시나리오 E-02).
+      x-screen: [01_login]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: 인증 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401':
+          description: 이메일 또는 비밀번호 불일치 (E-01)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: INVALID_CREDENTIALS, message: 이메일 또는 비밀번호가 올바르지 않습니다., timestamp: '2026-09-16T01:20:00.000Z' }
+        '403':
+          description: 로그인할 수 없는 계정 상태 (E-02)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                pending:
+                  summary: 승인 대기
+                  value: { error: { code: ACCOUNT_PENDING, message: 관리자 승인 대기 중인 계정입니다., timestamp: '2026-09-16T01:20:00.000Z' } }
+                rejected:
+                  summary: 가입 반려
+                  value: { error: { code: ACCOUNT_REJECTED, message: '가입이 반려된 계정입니다. 사유: 물류 담당 부서가 아닙니다.', timestamp: '2026-09-16T01:20:00.000Z' } }
+                suspended:
+                  summary: 정지
+                  value: { error: { code: ACCOUNT_SUSPENDED, message: 정지된 계정입니다. 관리자에게 문의하세요., timestamp: '2026-09-16T01:20:00.000Z' } }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: 로그아웃
+      description: 서버에 보관된 세션을 폐기한다.
+      x-screen: [00_shell]
+      responses:
+        '204': { description: 로그아웃됨 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: getMe
+      summary: 내 계정 정보 조회
+      description: 토큰에 연결된 사용자 정보를 반환한다.
+      x-screen: [00_shell]
+      x-implemented: false
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ══════════════════ Master ══════════════════
+
+  /companies:
+    get:
+      tags: [Master]
+      operationId: listCompanies
+      summary: 회사 목록 조회
+      description: 회원가입 시 소속 회사 선택에 사용한다. 플랫폼 운영사는 제외된다.
+      x-screen: [02_signup]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Company' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /ports:
+    get:
+      tags: [Master]
+      operationId: listPorts
+      summary: 항만 목록 조회
+      description: 화물 등록 시 출발·도착항 선택, 관리자의 영향 지역 매핑에 사용한다.
+      x-screen: [16_shipment_create, 23_event_review]
+      parameters:
+        - name: query
+          in: query
+          description: 한글명 · 영문명 · UN/LOCODE 부분 일치 검색
+          schema: { type: string, example: 부산 }
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Port' }
+                  total: { type: integer, example: 26 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /choke-points:
+    get:
+      tags: [Master]
+      operationId: listChokePoints
+      summary: 해상 요충지 목록 조회
+      description: 해협·운하 등 통과 구간 마스터. 관리자의 영향 지역 매핑에 사용한다.
+      x-screen: [23_event_review]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/ChokePoint' }
+                  total: { type: integer, example: 9 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /carriers:
+    get:
+      tags: [Master]
+      operationId: listCarriers
+      summary: 선사 목록 조회
+      x-screen: [16_shipment_create]
+      x-implemented: false
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Carrier' }
+                  total: { type: integer, example: 6 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /voyages:
+    get:
+      tags: [Master]
+      operationId: listVoyages
+      summary: 항차 목록 조회
+      description: 화물 등록 시 선박·항차 배정에 사용한다. 각 항차의 최신 AIS 위치를 포함한다.
+      x-screen: [16_shipment_create]
+      parameters:
+        - name: query
+          in: query
+          description: 선박명 · 항차번호 부분 일치 검색
+          schema: { type: string, example: HMM }
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Voyage' }
+                  total: { type: integer, example: 14 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /routes/preview:
+    post:
+      tags: [Master]
+      operationId: previewRoute
+      summary: 경유 요충지 · 도착 예정일 산출
+      description: |
+        출발항·도착항·출항일로부터 통과할 해상 요충지와 각 통과 예정일, 도착 예정일(ETA)을 계산한다.
+        여기서 산출된 `routePoints` 가 화물 등록 시 저장되어 요충지 통과 매칭의 판정 근거가 된다.
+      x-screen: [16a_route_preview]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutePreviewRequest' }
+      responses:
+        '200':
+          description: 산출 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoutePlan' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════ Dashboard ══════════════════
+
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboardSummary
+      summary: 리스크 요약 지표 조회
+      description: |
+        등급별 영향 건수, 노출 화물 가액, 진행 중 이벤트, 우선순위 영향 건을 반환한다.
+        공통 셸의 사이드바 배지(미조치 건수 · 미읽음 알림)도 이 응답을 사용한다.
+      x-screen: [10_radar, 00_shell]
+      parameters:
+        - $ref: '#/components/parameters/Scope'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DashboardSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /dashboard/map:
+    get:
+      tags: [Dashboard]
+      operationId: getDashboardMap
+      summary: 지도 표시 데이터 조회
+      description: |
+        지도에 그릴 선박(현재 위치 · 리스크 점수 · 적재 화물)과 리스크 영향 구역을 반환한다.
+        선박 아이콘 색상은 `topRiskScore` 로 결정한다 (0 흰색 → 100 빨강).
+      x-screen: [10_radar]
+      parameters:
+        - $ref: '#/components/parameters/Scope'
+        - $ref: '#/components/parameters/GradeFilter'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MapData' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ══════════════════ Shipment ══════════════════
+
+  /shipments:
+    get:
+      tags: [Shipment]
+      operationId: listShipments
+      summary: 화물 목록 조회
+      description: 담당자는 자기 회사 화물만, 관리자는 전체를 조회한다.
+      x-screen: [15_shipment_list]
+      parameters:
+        - $ref: '#/components/parameters/Scope'
+        - name: status
+          in: query
+          description: 화물 상태. 쉼표로 복수 지정 가능
+          schema: { type: string, example: 'IN_TRANSIT,ACTIVE' }
+        - $ref: '#/components/parameters/GradeFilter'
+        - name: keyword
+          in: query
+          description: 화물번호 · 품목 · 고객사 · 컨테이너번호 검색
+          schema: { type: string }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [risk, eta, value], default: risk }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ShipmentSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+    post:
+      tags: [Shipment]
+      operationId: createShipment
+      summary: 화물 등록
+      description: |
+        화물을 등록한다. 상태는 `PENDING_APPROVAL` 로 생성되며 관리자 승인 후 정식 모니터링 대상이 된다.
+        `routePoints` 를 생략하면 배정된 항차 또는 출발·도착항으로부터 경유 요충지를 자동 산출한다.
+        등록 즉시 매칭이 수행되어 응답의 `matches` 에 잠정 결과가 포함된다.
+      x-screen: [16_shipment_create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShipmentCreateRequest' }
+      responses:
+        '201':
+          description: 등록 신청 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShipmentDetail' }
+        '400':
+          description: 입력 검증 실패 (E-04)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              examples:
+                dueBeforeEta:
+                  summary: 고객 납기일이 도착 예정일보다 빠름
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: 고객 납기일이 도착 예정일보다 빠릅니다. 일정을 확인하세요.
+                      details: [{ field: customerDueDate, reason: BEFORE_ETA }]
+                      timestamp: '2026-09-16T01:20:00.000Z'
+                sameProt:
+                  summary: 출발항과 도착항이 동일
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: 출발항과 도착항이 동일합니다.
+                      details: [{ field: destinationPortId, reason: SAME_AS_ORIGIN }]
+                      timestamp: '2026-09-16T01:20:00.000Z'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /shipments/{shipmentId}:
+    parameters:
+      - $ref: '#/components/parameters/ShipmentId'
+    get:
+      tags: [Shipment]
+      operationId: getShipment
+      summary: 화물 상세 조회
+      description: 운송 일정, 통과 예정 요충지, 매칭된 영향 건을 함께 반환한다.
+      x-screen: [17_shipment_detail]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShipmentDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Shipment]
+      operationId: updateShipment
+      summary: 화물 수정
+      description: |
+        본인이 등록한 화물만 수정할 수 있다. 반려(`REJECTED`) 상태에서 수정하면
+        다시 `PENDING_APPROVAL` 로 전이되고 재매칭이 수행된다.
+      x-screen: [17_shipment_detail]
+      x-implemented: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShipmentUpdateRequest' }
+      responses:
+        '200':
+          description: 수정 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShipmentDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+    delete:
+      tags: [Shipment]
+      operationId: deleteShipment
+      summary: 화물 삭제
+      description: 운송 중(`IN_TRANSIT`)인 화물은 삭제할 수 없다.
+      x-screen: [17_shipment_detail]
+      x-implemented: false
+      responses:
+        '204': { description: 삭제됨 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+
+  # ══════════════════ RiskEvent ══════════════════
+
+  /risk-events:
+    get:
+      tags: [RiskEvent]
+      operationId: listRiskEvents
+      summary: 리스크 이벤트 목록 조회
+      description: 발행(`PUBLISHED`)된 이벤트만 반환한다. 내 화물 영향 건수와 최고 점수를 함께 계산한다.
+      x-screen: [13_event_list]
+      parameters:
+        - name: eventType
+          in: query
+          description: 이벤트 유형. 쉼표로 복수 지정 가능
+          schema: { type: string, example: 'GEOPOLITICAL,WEATHER' }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: keyword
+          in: query
+          schema: { type: string }
+        - name: onlyImpacted
+          in: query
+          description: true 면 내 화물이 영향받는 이벤트만 반환
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/RiskEventSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /risk-events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    get:
+      tags: [RiskEvent]
+      operationId: getRiskEvent
+      summary: 리스크 이벤트 상세 조회
+      description: |
+        정형화 결과, 영향 지역, 수집 원문, 매칭된 영향 건을 함께 반환한다.
+        담당자는 자기 회사 영향 건만, 관리자는 전체를 본다.
+        미발행 이벤트는 관리자만 조회할 수 있다.
+      x-screen: [14_event_detail, 23_event_review]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskEventDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════ Match ══════════════════
+
+  /matches:
+    get:
+      tags: [Match]
+      operationId: listMatches
+      summary: 영향 건 목록 조회
+      description: 이벤트 × 화물 매칭 결과를 리스크 점수 또는 노출 임박 순으로 조회한다.
+      x-screen: [11_match_list]
+      parameters:
+        - $ref: '#/components/parameters/Scope'
+        - $ref: '#/components/parameters/GradeFilter'
+        - name: status
+          in: query
+          description: 처리 상태. 쉼표로 복수 지정 가능
+          schema: { type: string, example: 'OPEN,ACTION_TAKEN' }
+        - name: eventId
+          in: query
+          schema: { type: string }
+        - name: shipmentId
+          in: query
+          schema: { type: string }
+        - name: minScore
+          in: query
+          schema: { type: integer, minimum: 0, maximum: 100 }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [score, date], default: score }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/MatchSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /matches/{matchId}:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    get:
+      tags: [Match]
+      operationId: getMatch
+      summary: 영향 건 상세 조회
+      description: 리스크 점수의 3계수 분해(`scoreBreakdown`), 조치 이력, 피드백을 함께 반환한다.
+      x-screen: [12_match_detail]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Match]
+      operationId: updateMatchStatus
+      summary: 영향 건 처리 상태 변경
+      description: 확인 · 종결 등 담당자의 처리 상태를 변경한다.
+      x-screen: [12_match_detail]
+      x-implemented: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/MatchStatus' }
+      responses:
+        '200':
+          description: 변경 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /matches/{matchId}/playbooks:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    get:
+      tags: [Match]
+      operationId: listPlaybooks
+      summary: 대응 시나리오 조회
+      description: 이벤트 유형과 리스크 등급에 맞는 대응 시나리오 템플릿을 제안한다.
+      x-screen: [12_match_detail, 12a_action_create]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matchId: { type: string, example: MT0002 }
+                  riskGrade: { $ref: '#/components/schemas/RiskGrade' }
+                  eventType: { $ref: '#/components/schemas/EventType' }
+                  total: { type: integer, example: 4 }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Playbook' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /matches/{matchId}/actions:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    post:
+      tags: [Match]
+      operationId: createAction
+      summary: 조치 등록
+      description: |
+        수행한 대응 조치를 기록한다. 등록되면 영향 건 상태가 `ACTION_TAKEN` 으로 전이된다.
+      x-screen: [12a_action_create]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ActionCreateRequest' }
+      responses:
+        '201':
+          description: 등록 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionLog' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /matches/{matchId}/feedback:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    post:
+      tags: [Match]
+      operationId: createFeedback
+      summary: 매칭 피드백 등록
+      description: |
+        매칭이 실제로 유효했는지 라벨링한다. `isRelevant: false` 면 오탐으로 기록되고
+        영향 건 상태가 `FALSE_POSITIVE` 로 전이된다. 매칭 정확도 산출의 원천이 된다.
+      x-screen: [12c_feedback]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FeedbackCreateRequest' }
+      responses:
+        '201':
+          description: 등록 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Feedback' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /actions/{actionId}:
+    parameters:
+      - name: actionId
+        in: path
+        required: true
+        schema: { type: string, example: AC0101 }
+    patch:
+      tags: [Match]
+      operationId: updateAction
+      summary: 조치 결과 수정
+      description: 본인이 등록한 조치의 진행 결과·메모를 갱신한다.
+      x-screen: [12a_action_create]
+      x-implemented: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actionType: { $ref: '#/components/schemas/ActionType' }
+                content: { type: string }
+                result: { $ref: '#/components/schemas/ActionResult' }
+                resultNote: { type: string, nullable: true }
+      responses:
+        '200':
+          description: 수정 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ActionLog' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════ Notification ══════════════════
+
+  /notifications:
+    get:
+      tags: [Notification]
+      operationId: listNotifications
+      summary: 알림 수신함 조회
+      x-screen: [18_notification_center]
+      parameters:
+        - name: status
+          in: query
+          description: 발송 상태. 쉼표로 복수 지정 가능
+          schema: { type: string, example: 'SENT,FAILED' }
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Notification' }
+                      unreadCount: { type: integer, example: 2 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Notification]
+      operationId: requestNotification
+      summary: 알림 발송 요청
+      description: |
+        영향 건에 대한 알림 발송을 요청한다.
+        `scope: INTERNAL` 은 즉시 발송되고, `scope: EXTERNAL`(고객사 등 대외)은
+        `PENDING_APPROVAL` 상태로 관리자 승인 대기열에 들어간다.
+        해당 등급의 알림이 비활성화되어 있으면 409 를 반환한다.
+      x-screen: [12b_notify_request]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationCreateRequest' }
+      responses:
+        '201':
+          description: 발송 또는 승인 요청 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 해당 등급의 알림 발송이 비활성화됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: NOTIFY_DISABLED, message: 'LOW 등급은 알림 발송이 비활성화되어 있습니다. 관리자에게 임계값 설정을 요청하세요.', timestamp: '2026-09-16T01:20:00.000Z' }
+
+  /notifications/{notificationId}/read:
+    parameters:
+      - $ref: '#/components/parameters/NotificationId'
+    patch:
+      tags: [Notification]
+      operationId: markNotificationRead
+      summary: 알림 읽음 처리
+      x-screen: [18_notification_center]
+      responses:
+        '200':
+          description: 처리 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ══════════════════ Admin ══════════════════
+
+  /admin/overview:
+    get:
+      tags: [Admin]
+      operationId: getAdminOverview
+      summary: 운영 현황 요약 조회
+      description: |
+        회원·화물·수집 파이프라인·매칭·알림·피드백 현황을 한 번에 반환한다.
+        공통 셸의 관리자 사이드바 배지(승인 대기 건수)도 이 응답을 사용한다.
+      x-screen: [20_admin_overview, 00_shell]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminOverview' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      operationId: listUsers
+      summary: 회원 목록 조회
+      description: 승인 대기 계정이 먼저 정렬된다.
+      x-screen: [27_user_approval]
+      parameters:
+        - name: status
+          in: query
+          description: 계정 상태. 쉼표로 복수 지정 가능
+          schema: { type: string, example: PENDING }
+        - name: companyId
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          description: 이름 · 이메일 검색
+          schema: { type: string }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/User'
+                            - type: object
+                              properties:
+                                shipmentCount: { type: integer, example: 5 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/users/{userId}/status:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string, example: U005 }
+    patch:
+      tags: [Admin]
+      operationId: updateUserStatus
+      summary: 회원 가입 승인 · 반려 · 정지
+      description: |
+        `ACTIVE` 로 변경하면 로그인이 가능해진다. `REJECTED` 는 사유가 필수이며 신청자에게 표시된다.
+        본인 계정의 상태는 변경할 수 없다.
+      x-screen: [27_user_approval]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [ACTIVE, REJECTED, SUSPENDED] }
+                reason: { type: string, description: 'status = REJECTED 일 때 필수' }
+                role: { $ref: '#/components/schemas/UserRole' }
+      responses:
+        '200':
+          description: 처리 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+
+  /admin/shipments:
+    get:
+      tags: [Admin]
+      operationId: listAllShipments
+      summary: 전체 화물 목록 조회
+      description: 전 테넌트의 화물을 조회한다. 승인 대기 건이 먼저 정렬된다.
+      x-screen: [28_shipment_approval]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, example: PENDING_APPROVAL }
+        - name: companyId
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/ShipmentSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/shipments/{shipmentId}/approval:
+    parameters:
+      - $ref: '#/components/parameters/ShipmentId'
+    patch:
+      tags: [Admin]
+      operationId: approveShipment
+      summary: 화물 등록 승인 · 반려
+      description: |
+        승인하면 항차 배정 여부에 따라 `IN_TRANSIT` 또는 `ACTIVE` 로 전이되고 재매칭이 수행된다.
+        승인 전 잠정(`provisional`) 이던 영향 건이 정식 모니터링·알림 대상이 된다.
+      x-screen: [28_shipment_approval]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalRequest' }
+      responses:
+        '200':
+          description: 처리 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShipmentDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 승인 대기 상태가 아님 (E-05)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: INVALID_STATE, message: '승인 대기 상태의 화물만 처리할 수 있습니다. (현재: IN_TRANSIT)', timestamp: '2026-09-16T01:20:00.000Z' }
+
+  /admin/feeds:
+    get:
+      tags: [Admin]
+      operationId: listRawFeeds
+      summary: 수집 원문 목록 조회
+      description: 수집된 뉴스·공지의 원문과 정형화 처리 상태를 조회한다.
+      x-screen: [24_feed_list]
+      parameters:
+        - name: processStatus
+          in: query
+          schema: { type: string, example: PENDING }
+        - name: sourceId
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/RawFeed' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/feeds/{rawFeedId}/analyze:
+    parameters:
+      - name: rawFeedId
+        in: path
+        required: true
+        schema: { type: string, example: RF11 }
+    post:
+      tags: [Admin]
+      operationId: analyzeRawFeed
+      summary: LLM 정형화 실행
+      description: |
+        원문을 LLM 으로 재분석해 리스크 이벤트를 생성하거나 기존 결과를 갱신한다.
+        생성된 이벤트는 `DRAFT` 상태이며 검토 후 발행해야 담당자에게 노출된다.
+      x-screen: [24_feed_list, 23_event_review]
+      responses:
+        '202':
+          description: 분석 실행됨
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rawFeedId: { type: string, example: RF11 }
+                  message: { type: string, example: LLM 정형화를 실행했습니다. 결과를 검토 후 발행하세요. }
+                  event: { $ref: '#/components/schemas/RiskEventDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/risk-events:
+    get:
+      tags: [Admin]
+      operationId: listAllRiskEvents
+      summary: 전체 리스크 이벤트 조회
+      description: |
+        미발행(`DRAFT`)·기각(`DISMISSED`) 이벤트를 포함한 전체 목록.
+        어떤 뉴스로 어느 지역에 어떤 위험도를 적용 중인지 한 화면에서 확인한다.
+      x-screen: [22_event_monitor]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, example: DRAFT }
+        - name: eventType
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/RiskEventAdminSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/risk-events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    patch:
+      tags: [Admin]
+      operationId: updateRiskEvent
+      summary: 정형화 결과 수정
+      description: |
+        LLM 이 추출한 유형·심각도·신뢰도·기간을 관리자가 보정한다.
+        저장 시 전체 재매칭이 수행되어 영향 건과 점수가 즉시 반영된다.
+      x-screen: [23_event_review]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RiskEventUpdateRequest' }
+      responses:
+        '200':
+          description: 수정 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskEventDetail' }
+        '400':
+          description: 입력 검증 실패
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  message: severity 는 1~5 사이 정수여야 합니다.
+                  details: [{ field: severity, reason: RANGE }]
+                  timestamp: '2026-09-16T01:20:00.000Z'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/risk-events/{eventId}/areas:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    put:
+      tags: [Admin]
+      operationId: replaceEventAreas
+      summary: 영향 지역 매핑 저장
+      description: |
+        이벤트가 영향을 미치는 항만·해상 요충지를 전체 교체한다.
+        저장 즉시 재매칭이 수행되며 응답에 재산출된 영향 건이 포함된다.
+        매칭 규칙의 핵심 입력이므로 1개 이상이어야 한다.
+      x-screen: [23_event_review]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [areas]
+              properties:
+                areas:
+                  type: array
+                  minItems: 1
+                  items: { $ref: '#/components/schemas/EventAreaUpsert' }
+      responses:
+        '200':
+          description: 저장 및 재매칭 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskEventDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/risk-events/{eventId}/status:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    patch:
+      tags: [Admin]
+      operationId: updateRiskEventStatus
+      summary: 이벤트 발행 · 발행 취소 · 기각
+      description: |
+        `PUBLISHED` 로 전이해야 담당자 화면에 노출되고 매칭·알림이 시작된다.
+        영향 지역이 없으면 발행할 수 없고, 기각(`DISMISSED`)은 사유가 필수다.
+      x-screen: [23_event_review]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/EventStatus' }
+                reviewNote: { type: string, description: 'status = DISMISSED 일 때 필수' }
+      responses:
+        '200':
+          description: 처리 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskEventDetail' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 영향 지역 미지정 상태에서 발행 시도 (E-06)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: NO_IMPACT_AREA, message: 영향 지역이 지정되지 않은 이벤트는 발행할 수 없습니다., timestamp: '2026-09-16T01:20:00.000Z' }
+
+  /admin/risk-events/{eventId}/rematch:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    post:
+      tags: [Admin]
+      operationId: rematchRiskEvent
+      summary: 재매칭 실행
+      description: 매칭 엔진을 다시 실행하고 변경 전후 건수를 반환한다.
+      x-screen: [23_event_review]
+      responses:
+        '200':
+          description: 재매칭 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eventId: { type: string, example: EV02 }
+                  before: { type: integer, example: 7, description: 재매칭 전 영향 건수 }
+                  after: { type: integer, example: 9, description: 재매칭 후 영향 건수 }
+                  matches:
+                    type: array
+                    items: { $ref: '#/components/schemas/MatchSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/sources:
+    get:
+      tags: [Admin]
+      operationId: listRiskSources
+      summary: 수집 소스 목록 조회
+      x-screen: [25_source_config]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 8 }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RiskSource' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: createRiskSource
+      summary: 수집 소스 추가
+      x-screen: [25_source_config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RiskSourceCreateRequest' }
+      responses:
+        '201':
+          description: 등록 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskSource' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: 이미 등록된 URL
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: DUPLICATE_SOURCE, message: 이미 등록된 URL 입니다., timestamp: '2026-09-16T01:20:00.000Z' }
+
+  /admin/sources/{sourceId}:
+    parameters:
+      - name: sourceId
+        in: path
+        required: true
+        schema: { type: string, example: SRC03 }
+    patch:
+      tags: [Admin]
+      operationId: updateRiskSource
+      summary: 수집 소스 수정
+      description: |
+        `trustWeight` 는 리스크 점수의 신뢰도 계수에 직접 곱해지므로,
+        변경 시 전체 영향 건의 점수가 재계산된다.
+      x-screen: [25_source_config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                sourceType: { $ref: '#/components/schemas/SourceType' }
+                url: { type: string, format: uri }
+                language: { type: string, example: en }
+                trustWeight: { type: number, format: float, minimum: 0, maximum: 1, example: 0.95 }
+                collectIntervalMin: { type: integer, example: 30 }
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: 수정 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RiskSource' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/thresholds:
+    get:
+      tags: [Admin]
+      operationId: getThresholds
+      summary: 리스크 등급 기준 조회
+      x-screen: [26_threshold_config]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 4 }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RiskThreshold' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Admin]
+      operationId: updateThresholds
+      summary: 리스크 등급 기준 저장
+      description: |
+        4개 등급을 한 번에 교체한다. 구간은 0~100 사이에서 빈틈 없이 연속되어야 한다.
+        저장 시 전체 영향 건의 등급이 재계산된다.
+      x-screen: [26_threshold_config]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 4
+                  maxItems: 4
+                  items: { $ref: '#/components/schemas/RiskThresholdUpsert' }
+      responses:
+        '200':
+          description: 저장 및 재계산 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total: { type: integer, example: 4 }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/RiskThreshold' }
+        '400':
+          description: 구간 검증 실패 (E-06)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  message: MEDIUM 와 HIGH 구간이 연속되지 않습니다.
+                  details: [{ field: 'items[2].minScore', reason: NOT_CONTIGUOUS }]
+                  timestamp: '2026-09-16T01:20:00.000Z'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/notifications:
+    get:
+      tags: [Admin]
+      operationId: listAllNotifications
+      summary: 전체 알림 목록 조회
+      description: 승인 대기 건이 먼저 정렬된다.
+      x-screen: [29_notification_approval]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, example: PENDING_APPROVAL }
+        - name: scope
+          in: query
+          schema: { $ref: '#/components/schemas/NotificationScope' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/Notification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/notifications/{notificationId}/approval:
+    parameters:
+      - $ref: '#/components/parameters/NotificationId'
+    patch:
+      tags: [Admin]
+      operationId: approveNotification
+      summary: 대외 알림 발송 승인 · 반려
+      description: 승인하면 즉시 발송되고, 반려하면 사유와 함께 `REJECTED` 로 전이된다.
+      x-screen: [29_notification_approval]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalRequest' }
+      responses:
+        '200':
+          description: 처리 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+
+  /admin/feedback-summary:
+    get:
+      tags: [Admin]
+      operationId: getFeedbackSummary
+      summary: 매칭 피드백 집계 조회
+      description: 매칭 정확도(Precision), 오탐 건수, 이벤트별 오탐율을 반환한다.
+      x-screen: [30_feedback_summary]
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeedbackSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      operationId: listAuditLogs
+      summary: 감사 로그 조회
+      x-screen: [31_audit_log]
+      parameters:
+        - name: action
+          in: query
+          description: 액션명 부분 일치
+          schema: { type: string, example: EVENT_ }
+        - name: targetType
+          in: query
+          schema: { type: string, example: RISK_EVENT }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/AuditLog' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/collection-jobs:
+    get:
+      tags: [Admin]
+      operationId: listCollectionJobs
+      summary: 수집 작업 이력 조회
+      description: 소스별 주기 수집 작업의 실행 이력. 운영 대시보드에는 최근 6건만 포함된다.
+      x-screen: [20_admin_overview]
+      x-implemented: false
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PageMeta'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items: { $ref: '#/components/schemas/CollectionJob' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+
+  # ══════════════════ 공통 파라미터 ══════════════════
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 페이지 번호 (1부터)
+      schema: { type: integer, minimum: 1, default: 1 }
+    Size:
+      name: size
+      in: query
+      description: 페이지당 건수
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    Scope:
+      name: scope
+      in: query
+      description: '`mine` 이면 본인이 담당하는 건만, 생략하면 소속 회사 전체'
+      schema: { type: string, enum: [mine] }
+    GradeFilter:
+      name: grade
+      in: query
+      description: 리스크 등급 필터. 쉼표로 복수 지정 가능
+      schema: { type: string, example: 'CRITICAL,HIGH' }
+    ShipmentId:
+      name: shipmentId
+      in: path
+      required: true
+      schema: { type: string, example: SH001 }
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema: { type: string, example: EV02 }
+    MatchId:
+      name: matchId
+      in: path
+      required: true
+      schema: { type: string, example: MT0002 }
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema: { type: string, example: NT03 }
+
+  # ══════════════════ 공통 오류 응답 ══════════════════
+  responses:
+    ValidationError:
+      description: 입력 검증 실패 (E-04)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: '필수 항목이 누락되었습니다: email'
+              details: [{ field: email, reason: REQUIRED }]
+              timestamp: '2026-09-16T01:20:00.000Z'
+    Unauthorized:
+      description: 인증 토큰 없음 또는 만료
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: UNAUTHORIZED, message: 인증 토큰이 없거나 만료되었습니다. 다시 로그인해 주세요., timestamp: '2026-09-16T01:20:00.000Z' }
+    Forbidden:
+      description: 권한 없음 (E-03) — 타 테넌트 데이터 접근 또는 관리자 전용 기능
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          examples:
+            adminOnly:
+              summary: 관리자 전용 기능
+              value: { error: { code: FORBIDDEN, message: 시스템 관리자 권한이 필요한 기능입니다., timestamp: '2026-09-16T01:20:00.000Z' } }
+            otherTenant:
+              summary: 타 회사 데이터
+              value: { error: { code: FORBIDDEN, message: 다른 회사의 화물은 조회할 수 없습니다., timestamp: '2026-09-16T01:20:00.000Z' } }
+    NotFound:
+      description: 리소스를 찾을 수 없음
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: NOT_FOUND, message: 화물을 찾을 수 없습니다., timestamp: '2026-09-16T01:20:00.000Z' }
+    ServerError:
+      description: 서버 내부 오류
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: INTERNAL_ERROR, message: 서버 내부 오류가 발생했습니다., timestamp: '2026-09-16T01:20:00.000Z' }
+    StateConflict:
+      description: 현재 상태에서 수행할 수 없는 요청 (E-05)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: INVALID_STATE, message: '승인 대기 상태의 건만 처리할 수 있습니다. (현재: SENT)', timestamp: '2026-09-16T01:20:00.000Z' }
+
+  # ══════════════════ 스키마 ══════════════════
+  schemas:
+
+    # ── 공통 ──
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, timestamp]
+          properties:
+            code: { type: string, example: VALIDATION_ERROR, description: 기계 판독용 오류 코드 }
+            message: { type: string, example: 고객 납기일이 도착 예정일보다 빠릅니다., description: 화면에 그대로 노출되는 사용자 메시지 }
+            details:
+              type: array
+              description: 필드 단위 오류. 화면에서 해당 입력란을 강조하는 데 사용
+              items: { $ref: '#/components/schemas/ErrorDetail' }
+            timestamp: { type: string, format: date-time }
+
+    ErrorDetail:
+      type: object
+      properties:
+        field: { type: string, example: customerDueDate }
+        reason: { type: string, example: BEFORE_ETA }
+
+    PageMeta:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        size: { type: integer, example: 50 }
+        total: { type: integer, example: 24 }
+        totalPages: { type: integer, example: 1 }
+
+    # ── 열거형 ──
+    UserRole: { type: string, enum: [OPERATOR, ADMIN] }
+    UserStatus: { type: string, enum: [PENDING, ACTIVE, REJECTED, SUSPENDED] }
+    CompanyType: { type: string, enum: [SHIPPER, FORWARDER, PLATFORM] }
+    ShipmentStatus: { type: string, enum: [DRAFT, PENDING_APPROVAL, ACTIVE, IN_TRANSIT, ARRIVED, REJECTED, CANCELLED] }
+    VoyageStatus: { type: string, enum: [SCHEDULED, IN_TRANSIT, DELAYED, ARRIVED] }
+    EventType: { type: string, enum: [GEOPOLITICAL, WEATHER, PORT_CONGESTION, LABOR_STRIKE, SANCTION, ACCIDENT, EPIDEMIC, REGULATION, PIRACY] }
+    EventStatus: { type: string, enum: [DRAFT, PUBLISHED, EXPIRED, DISMISSED] }
+    AreaType: { type: string, enum: [PORT, CHOKEPOINT] }
+    MatchReason:
+      type: string
+      enum: [CHOKEPOINT_TRANSIT, PORT_CALL, ORIGIN, DESTINATION]
+      description: |
+        매칭이 성립한 근거.
+        `CHOKEPOINT_TRANSIT` 요충지 통과 · `PORT_CALL` 중간 기항 · `ORIGIN` 출발항 · `DESTINATION` 도착항
+    MatchStatus: { type: string, enum: [OPEN, ACKNOWLEDGED, ACTION_TAKEN, RESOLVED, FALSE_POSITIVE] }
+    RiskGrade: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+    RiskGradeOrNone: { type: string, enum: [NONE, LOW, MEDIUM, HIGH, CRITICAL] }
+    ActionType: { type: string, enum: [REROUTE, EXPEDITE, NOTIFY_CUSTOMER, INSURANCE_CLAIM, HOLD, MONITOR, OTHER] }
+    ActionResult: { type: string, enum: [PENDING, IN_PROGRESS, DONE, FAILED] }
+    SourceType: { type: string, enum: [NEWS, GOV, NOTICE, WEATHER, SOCIAL] }
+    FeedProcessStatus: { type: string, enum: [PENDING, PROCESSED, DISCARDED, FAILED] }
+    NotificationChannel: { type: string, enum: [ALIMTALK, EMAIL, IN_APP] }
+    NotificationScope:
+      type: string
+      enum: [INTERNAL, EXTERNAL]
+      description: '`INTERNAL` 사내 즉시 발송 · `EXTERNAL` 대외(고객사) — 관리자 승인 필요'
+    NotificationStatus: { type: string, enum: [DRAFT, PENDING_APPROVAL, SENT, FAILED, REJECTED] }
+    JobStatus: { type: string, enum: [SUCCESS, PARTIAL, FAILED] }
+
+    # ── 인증 ──
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: operator@sonar.io }
+        password: { type: string, format: password, example: sonar1234 }
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string, example: 31bcd487-a699-4bde-a27b-18602fb19860 }
+        tokenType: { type: string, example: Bearer }
+        expiresIn: { type: integer, example: 3600, description: 초 단위 }
+        user: { $ref: '#/components/schemas/User' }
+
+    SignupRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email: { type: string, format: email, example: park@seah.co.kr }
+        password: { type: string, format: password, minLength: 8, example: sonar1234 }
+        name: { type: string, example: 박지호 }
+        phone: { type: string, nullable: true, example: 010-2204-6671 }
+        department: { type: string, nullable: true, example: 수출팀 }
+        companyId: { type: string, nullable: true, description: 기존 회사 소속 시 지정, example: C003 }
+        companyName: { type: string, nullable: true, description: 신규 회사 등록 시 지정 (companyId 생략), example: (주)세아정밀 }
+        companyType: { $ref: '#/components/schemas/CompanyType' }
+        bizRegNo: { type: string, nullable: true, example: 502-81-77431 }
+
+    User:
+      type: object
+      properties:
+        userId: { type: string, example: U002 }
+        email: { type: string, format: email, example: operator@sonar.io }
+        name: { type: string, example: 김도현 }
+        phone: { type: string, nullable: true, example: 010-3391-2048 }
+        department: { type: string, nullable: true, example: 글로벌물류팀 }
+        role: { $ref: '#/components/schemas/UserRole' }
+        status: { $ref: '#/components/schemas/UserStatus' }
+        companyId: { type: string, example: C001 }
+        companyName: { type: string, nullable: true, example: (주)한신머티리얼즈 }
+        companyType: { $ref: '#/components/schemas/CompanyType' }
+        createdAt: { type: string, format: date-time }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+        rejectReason: { type: string, nullable: true }
+
+    # ── 마스터 ──
+    Company:
+      type: object
+      properties:
+        companyId: { type: string, example: C001 }
+        name: { type: string, example: (주)한신머티리얼즈 }
+        bizRegNo: { type: string, nullable: true, example: 214-81-33210 }
+        companyType: { $ref: '#/components/schemas/CompanyType' }
+        createdAt: { type: string, format: date-time }
+
+    Port:
+      type: object
+      properties:
+        portId: { type: string, example: P001 }
+        unlocode: { type: string, example: KRPUS }
+        nameKo: { type: string, example: 부산 }
+        nameEn: { type: string, example: Busan }
+        countryCode: { type: string, example: KR }
+        lat: { type: number, format: double, example: 35.1 }
+        lon: { type: number, format: double, example: 129.04 }
+
+    ChokePoint:
+      type: object
+      properties:
+        chokePointId: { type: string, example: CP01 }
+        code: { type: string, example: HORMUZ }
+        nameKo: { type: string, example: 호르무즈 해협 }
+        nameEn: { type: string, example: Strait of Hormuz }
+        lat: { type: number, format: double, example: 26.57 }
+        lon: { type: number, format: double, example: 56.25 }
+        radiusKm: { type: integer, example: 130 }
+
+    Carrier:
+      type: object
+      properties:
+        carrierId: { type: string, example: CR01 }
+        name: { type: string, example: HMM }
+        scacCode: { type: string, example: HDMU }
+
+    Voyage:
+      type: object
+      description: 선박 + 항차 + 최신 AIS 위치
+      properties:
+        voyageId: { type: string, example: VY01 }
+        voyageNo: { type: string, example: 0128E }
+        serviceRouteName: { type: string, nullable: true, example: FE-EUR / FE4 }
+        status: { $ref: '#/components/schemas/VoyageStatus' }
+        vesselId: { type: string, example: VS01 }
+        vesselName: { type: string, example: HMM ALGECIRAS }
+        imoNo: { type: string, example: '9863297' }
+        carrierName: { type: string, nullable: true, example: HMM }
+        capacityTeu: { type: integer, nullable: true, example: 23964 }
+        currentLat: { type: number, format: double, nullable: true, example: 13.52 }
+        currentLon: { type: number, format: double, nullable: true, example: 42.81 }
+        currentSpeedKn: { type: number, format: float, nullable: true, example: 18.2 }
+        currentHeading: { type: integer, nullable: true, example: 338 }
+        positionUpdatedAt: { type: string, format: date-time, nullable: true }
+
+    RoutePreviewRequest:
+      type: object
+      required: [originPortId, destinationPortId, etd]
+      properties:
+        originPortId: { type: string, example: P001 }
+        destinationPortId: { type: string, example: P017 }
+        etd: { type: string, format: date, example: '2026-10-01' }
+        preferCapeRoute: { type: boolean, default: false, description: 희망봉 우회 항로 적용 }
+
+    RoutePlan:
+      type: object
+      properties:
+        originPort: { $ref: '#/components/schemas/Port' }
+        destinationPort: { $ref: '#/components/schemas/Port' }
+        etd: { type: string, format: date, example: '2026-10-01' }
+        eta: { type: string, format: date, example: '2026-10-26' }
+        transitDays: { type: integer, example: 25 }
+        distanceNm: { type: integer, example: 9002, description: 해리(nautical mile) }
+        assumedSpeedKn: { type: number, format: float, example: 17.5 }
+        preferCapeRoute: { type: boolean, example: false }
+        routePoints:
+          type: array
+          items: { $ref: '#/components/schemas/RoutePlanPoint' }
+
+    RoutePlanPoint:
+      type: object
+      properties:
+        seq: { type: integer, example: 3 }
+        chokePointId: { type: string, example: CP02 }
+        code: { type: string, example: BAB }
+        nameKo: { type: string, example: 바브엘만데브 해협 }
+        lat: { type: number, format: double, example: 12.58 }
+        lon: { type: number, format: double, example: 43.33 }
+        expectedPassageDate: { type: string, format: date, example: '2026-10-16' }
+
+    # ── 대시보드 ──
+    DashboardSummary:
+      type: object
+      properties:
+        baseDate: { type: string, format: date, example: '2026-09-16' }
+        gradeCounts:
+          type: object
+          description: 등급별 영향 건수
+          properties:
+            CRITICAL: { type: integer, example: 3 }
+            HIGH: { type: integer, example: 3 }
+            MEDIUM: { type: integer, example: 13 }
+            LOW: { type: integer, example: 5 }
+        totalMatchCount: { type: integer, example: 24 }
+        openMatchCount: { type: integer, example: 10, description: 미조치 건수 }
+        actionTakenCount: { type: integer, example: 2 }
+        trackedShipmentCount: { type: integer, example: 8 }
+        exposedShipmentCount: { type: integer, example: 7 }
+        exposedCargoValueUsd: { type: number, format: double, example: 8330000 }
+        maxExpectedDelayDays: { type: integer, example: 12 }
+        pendingApprovalShipmentCount: { type: integer, example: 0 }
+        unreadNotificationCount: { type: integer, example: 2 }
+        topEvents:
+          type: array
+          description: 내 화물에 영향을 주는 이벤트 상위 5건
+          items:
+            allOf:
+              - $ref: '#/components/schemas/RiskEventSummary'
+              - type: object
+                properties:
+                  myImpactedCount: { type: integer, example: 3 }
+                  myTopRiskScore: { type: integer, example: 79 }
+        priorityMatches:
+          type: array
+          description: 리스크 점수 상위 10건
+          items: { $ref: '#/components/schemas/MatchSummary' }
+
+    MapData:
+      type: object
+      properties:
+        baseDate: { type: string, format: date-time }
+        vessels:
+          type: array
+          items: { $ref: '#/components/schemas/MapVessel' }
+        riskZones:
+          type: array
+          items: { $ref: '#/components/schemas/RiskZone' }
+        unassignedShipmentCount: { type: integer, example: 1, description: 선박 미배정으로 지도에 표시되지 않는 화물 수 }
+
+    MapVessel:
+      allOf:
+        - $ref: '#/components/schemas/Voyage'
+        - type: object
+          properties:
+            topRiskScore: { type: integer, minimum: 0, maximum: 100, example: 79, description: 아이콘 색상 결정값 (0 흰색 → 100 빨강) }
+            topRiskGrade: { $ref: '#/components/schemas/RiskGradeOrNone' }
+            shipmentCount: { type: integer, example: 2 }
+            provisional: { type: boolean, example: false, description: true 면 승인 대기 화물만 적재 (점선 마커) }
+            shipments:
+              type: array
+              items:
+                type: object
+                properties:
+                  shipmentId: { type: string, example: SH001 }
+                  shipmentNo: { type: string, example: SNR-2026-0001 }
+                  commodity: { type: string, example: 반도체 포토레지스트 }
+                  status: { $ref: '#/components/schemas/ShipmentStatus' }
+                  topRiskScore: { type: integer, example: 76 }
+                  topRiskGrade: { $ref: '#/components/schemas/RiskGradeOrNone' }
+            waypoints:
+              type: array
+              description: 항로 폴리라인 좌표 (기항지 + 통과 요충지를 날짜순 정렬)
+              items: { $ref: '#/components/schemas/Waypoint' }
+
+    Waypoint:
+      type: object
+      properties:
+        kind: { type: string, enum: [PORT, CHOKEPOINT] }
+        name: { type: string, example: 바브엘만데브 해협 }
+        lat: { type: number, format: double }
+        lon: { type: number, format: double }
+        date: { type: string, format: date }
+
+    RiskZone:
+      type: object
+      description: 지도에 원으로 표시되는 리스크 영향 구역
+      properties:
+        eventAreaId: { type: string, example: EA04 }
+        eventId: { type: string, example: EV02 }
+        eventTitle: { type: string, example: 홍해·바브엘만데브 상선 공격 재개 }
+        eventType: { $ref: '#/components/schemas/EventType' }
+        areaType: { $ref: '#/components/schemas/AreaType' }
+        areaName: { type: string, example: 바브엘만데브 해협 }
+        lat: { type: number, format: double }
+        lon: { type: number, format: double }
+        radiusKm: { type: integer, example: 120 }
+        severity: { type: integer, minimum: 1, maximum: 5, example: 5 }
+        impactLevel: { type: integer, minimum: 1, maximum: 5, example: 5 }
+        expectedDelayDays: { type: integer, example: 12 }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        myImpactedShipmentCount: { type: integer, example: 4 }
+
+    # ── 화물 ──
+    ShipmentCreateRequest:
+      type: object
+      required: [commodity, originPortId, destinationPortId, etd, eta, cargoValueUsd]
+      properties:
+        commodity: { type: string, example: 반도체 포토레지스트 }
+        cargoValueUsd: { type: number, format: double, minimum: 0, exclusiveMinimum: true, example: 1450000 }
+        currency: { type: string, default: USD }
+        originPortId: { type: string, example: P001 }
+        destinationPortId: { type: string, example: P017 }
+        voyageId: { type: string, nullable: true, description: 선박 미배정 시 생략, example: VY01 }
+        etd: { type: string, format: date, example: '2026-08-26' }
+        eta: { type: string, format: date, example: '2026-09-30' }
+        customerDueDate: { type: string, format: date, description: 'ETA 이후여야 함. 생략 시 ETA 로 설정', example: '2026-10-05' }
+        alternativeRouteAvailable: { type: boolean, default: false, description: 리스크 점수의 경로 경직성 계수에 반영 }
+        preferCapeRoute: { type: boolean, default: false }
+        incoterms: { type: string, default: FOB, example: CIF }
+        containerNo: { type: string, nullable: true, example: HDMU4182736 }
+        containerType: { type: string, default: 40HC, example: 20RF }
+        containerCount: { type: integer, default: 1, example: 4 }
+        weightKg: { type: integer, example: 42000 }
+        customerName: { type: string, nullable: true, example: ASML Netherlands B.V. }
+        memo: { type: string, nullable: true }
+        routePoints:
+          type: array
+          description: 생략 시 항차 또는 항로 계산으로 자동 산출
+          items:
+            type: object
+            properties:
+              chokePointId: { type: string, example: CP02 }
+              expectedPassageDate: { type: string, format: date, example: '2026-09-16' }
+
+    ShipmentUpdateRequest:
+      type: object
+      description: 전달한 필드만 갱신된다
+      properties:
+        commodity: { type: string }
+        cargoValueUsd: { type: number, format: double }
+        etd: { type: string, format: date }
+        eta: { type: string, format: date }
+        customerDueDate: { type: string, format: date }
+        alternativeRouteAvailable: { type: boolean }
+        voyageId: { type: string, nullable: true }
+        incoterms: { type: string }
+        containerNo: { type: string, nullable: true }
+        containerType: { type: string }
+        containerCount: { type: integer }
+        weightKg: { type: integer }
+        customerName: { type: string, nullable: true }
+        memo: { type: string, nullable: true }
+
+    ShipmentSummary:
+      type: object
+      properties:
+        shipmentId: { type: string, example: SH001 }
+        shipmentNo: { type: string, example: SNR-2026-0001 }
+        companyId: { type: string, example: C001 }
+        companyName: { type: string, example: (주)한신머티리얼즈 }
+        ownerUserId: { type: string, example: U002 }
+        ownerName: { type: string, example: 김도현 }
+        commodity: { type: string, example: 반도체 포토레지스트 }
+        cargoValueUsd: { type: number, format: double, example: 1450000 }
+        currency: { type: string, example: USD }
+        customerName: { type: string, nullable: true, example: ASML Netherlands B.V. }
+        containerType: { type: string, example: 20RF }
+        containerCount: { type: integer, example: 4 }
+        originPort: { $ref: '#/components/schemas/Port' }
+        destinationPort: { $ref: '#/components/schemas/Port' }
+        etd: { type: string, format: date }
+        eta: { type: string, format: date }
+        customerDueDate: { type: string, format: date }
+        alternativeRouteAvailable: { type: boolean }
+        status: { $ref: '#/components/schemas/ShipmentStatus' }
+        vessel:
+          allOf: [{ $ref: '#/components/schemas/Voyage' }]
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        topRiskScore: { type: integer, example: 76 }
+        topRiskGrade: { $ref: '#/components/schemas/RiskGradeOrNone' }
+        matchCount: { type: integer, example: 2 }
+        openMatchCount: { type: integer, example: 1 }
+        maxExpectedDelayDays: { type: integer, example: 12 }
+
+    ShipmentDetail:
+      allOf:
+        - $ref: '#/components/schemas/ShipmentSummary'
+        - type: object
+          properties:
+            incoterms: { type: string, example: CIF }
+            containerNo: { type: string, nullable: true }
+            weightKg: { type: integer, example: 42000 }
+            memo: { type: string, nullable: true }
+            rejectReason: { type: string, nullable: true, description: 반려 사유 }
+            approvedAt: { type: string, format: date-time, nullable: true }
+            approvedBy: { type: string, nullable: true }
+            approverName: { type: string, nullable: true }
+            routePoints:
+              type: array
+              description: 통과 예정 해상 요충지
+              items:
+                type: object
+                properties:
+                  seq: { type: integer }
+                  expectedPassageDate: { type: string, format: date }
+                  chokePoint: { $ref: '#/components/schemas/ChokePoint' }
+            schedule:
+              type: array
+              description: 배정 항차의 기항 스케줄
+              items:
+                type: object
+                properties:
+                  seq: { type: integer }
+                  port: { $ref: '#/components/schemas/Port' }
+                  eta: { type: string, format: date, nullable: true }
+                  etd: { type: string, format: date, nullable: true }
+            waypoints:
+              type: array
+              items: { $ref: '#/components/schemas/Waypoint' }
+            matches:
+              type: array
+              items: { $ref: '#/components/schemas/MatchSummary' }
+
+    # ── 리스크 이벤트 ──
+    RiskEventSummary:
+      type: object
+      properties:
+        eventId: { type: string, example: EV02 }
+        eventType: { $ref: '#/components/schemas/EventType' }
+        status: { $ref: '#/components/schemas/EventStatus' }
+        title: { type: string, example: 홍해·바브엘만데브 상선 공격 재개 }
+        summary: { type: string }
+        severity: { type: integer, minimum: 1, maximum: 5, example: 5 }
+        confidence: { type: number, format: float, minimum: 0, maximum: 1, example: 0.88 }
+        startDate: { type: string, format: date }
+        expectedEndDate: { type: string, format: date }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        areaCount: { type: integer, example: 4 }
+        areaNames:
+          type: array
+          items: { type: string, example: 바브엘만데브 해협 }
+        impactedShipmentCount: { type: integer, example: 9 }
+        topRiskGrade: { $ref: '#/components/schemas/RiskGradeOrNone' }
+        myImpactedCount: { type: integer, example: 3, description: 내 회사 영향 건수 }
+        myTopRiskScore: { type: integer, example: 79 }
+
+    RiskEventAdminSummary:
+      allOf:
+        - $ref: '#/components/schemas/RiskEventSummary'
+        - type: object
+          properties:
+            sourceName: { type: string, nullable: true, example: UKMTO 항행경보 }
+            trustWeight: { type: number, format: float, nullable: true, example: 0.98 }
+            llmModel: { type: string, nullable: true, example: claude-opus-5 }
+            llmExtractedAt: { type: string, format: date-time, nullable: true }
+            reviewerName: { type: string, nullable: true, example: 박시윤 }
+            reviewedAt: { type: string, format: date-time, nullable: true }
+            reviewNote: { type: string, nullable: true }
+
+    RiskEventDetail:
+      allOf:
+        - $ref: '#/components/schemas/RiskEventAdminSummary'
+        - type: object
+          properties:
+            reviewedBy: { type: string, nullable: true }
+            areas:
+              type: array
+              items: { $ref: '#/components/schemas/EventArea' }
+            source:
+              allOf: [{ $ref: '#/components/schemas/RawFeedRef' }]
+              nullable: true
+            matches:
+              type: array
+              items: { $ref: '#/components/schemas/MatchSummary' }
+
+    RiskEventUpdateRequest:
+      type: object
+      description: 전달한 필드만 갱신되며, 저장 시 전체 재매칭이 수행된다
+      properties:
+        title: { type: string }
+        summary: { type: string }
+        eventType: { $ref: '#/components/schemas/EventType' }
+        severity: { type: integer, minimum: 1, maximum: 5 }
+        confidence: { type: number, format: float, minimum: 0, maximum: 1 }
+        startDate: { type: string, format: date }
+        expectedEndDate: { type: string, format: date }
+        reviewNote: { type: string }
+
+    EventArea:
+      type: object
+      properties:
+        eventAreaId: { type: string, example: EA04 }
+        eventId: { type: string, example: EV02 }
+        areaType: { $ref: '#/components/schemas/AreaType' }
+        areaName: { type: string, example: 바브엘만데브 해협 }
+        port:
+          allOf: [{ $ref: '#/components/schemas/Port' }]
+          nullable: true
+        chokePoint:
+          allOf: [{ $ref: '#/components/schemas/ChokePoint' }]
+          nullable: true
+        impactLevel: { type: integer, minimum: 1, maximum: 5, example: 5 }
+        expectedDelayDays: { type: integer, example: 12 }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+
+    EventAreaUpsert:
+      type: object
+      required: [areaType]
+      properties:
+        areaType: { $ref: '#/components/schemas/AreaType' }
+        portId: { type: string, nullable: true, description: 'areaType = PORT 일 때 필수' }
+        chokePointId: { type: string, nullable: true, description: 'areaType = CHOKEPOINT 일 때 필수' }
+        impactLevel: { type: integer, minimum: 1, maximum: 5, example: 5 }
+        expectedDelayDays: { type: integer, minimum: 0, example: 12 }
+        startDate: { type: string, format: date, nullable: true }
+        endDate: { type: string, format: date, nullable: true }
+
+    RawFeedRef:
+      type: object
+      description: 이벤트의 근거가 된 수집 원문
+      properties:
+        rawFeedId: { type: string, example: RF02 }
+        sourceId: { type: string, example: SRC03 }
+        sourceName: { type: string, nullable: true, example: UKMTO 항행경보 }
+        sourceType: { $ref: '#/components/schemas/SourceType' }
+        trustWeight: { type: number, format: float, nullable: true, example: 0.98 }
+        title: { type: string }
+        body: { type: string, description: 원문 본문 }
+        url: { type: string, format: uri, nullable: true }
+        publishedAt: { type: string, format: date-time }
+        collectedAt: { type: string, format: date-time }
+
+    RawFeed:
+      allOf:
+        - $ref: '#/components/schemas/RawFeedRef'
+        - type: object
+          properties:
+            externalId: { type: string, example: UKMTO-2026-0901-B }
+            processStatus: { $ref: '#/components/schemas/FeedProcessStatus' }
+            discardReason: { type: string, nullable: true }
+            eventId: { type: string, nullable: true }
+            eventStatus:
+              allOf: [{ $ref: '#/components/schemas/EventStatus' }]
+              nullable: true
+            eventTitle: { type: string, nullable: true }
+
+    # ── 매칭 ──
+    MatchSummary:
+      type: object
+      properties:
+        matchId: { type: string, example: MT0002 }
+        eventId: { type: string, example: EV02 }
+        shipmentId: { type: string, example: SH001 }
+        companyId: { type: string, example: C001 }
+        eventTitle: { type: string, example: 홍해·바브엘만데브 상선 공격 재개 }
+        eventType: { $ref: '#/components/schemas/EventType' }
+        eventSeverity: { type: integer, example: 5 }
+        shipmentNo: { type: string, example: SNR-2026-0001 }
+        commodity: { type: string, example: 반도체 포토레지스트 }
+        cargoValueUsd: { type: number, format: double, example: 1450000 }
+        ownerUserId: { type: string, example: U002 }
+        ownerName: { type: string, example: 김도현 }
+        companyName: { type: string, example: (주)한신머티리얼즈 }
+        originPort: { $ref: '#/components/schemas/Port' }
+        destinationPort: { $ref: '#/components/schemas/Port' }
+        vesselName: { type: string, nullable: true, example: HMM ALGECIRAS }
+        areaName: { type: string, nullable: true, example: 바브엘만데브 해협 }
+        matchReason: { $ref: '#/components/schemas/MatchReason' }
+        exposureDate: { type: string, format: date, example: '2026-09-16', description: 실제 노출 시점 }
+        overlapStart: { type: string, format: date }
+        overlapEnd: { type: string, format: date }
+        expectedDelayDays: { type: integer, example: 12 }
+        bufferDays: { type: integer, example: 5, description: 고객 납기일 − ETA }
+        riskScore: { type: integer, minimum: 0, maximum: 100, example: 76 }
+        riskGrade: { $ref: '#/components/schemas/RiskGrade' }
+        provisional: { type: boolean, example: false, description: 화물 승인 전 잠정 결과 }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        eta: { type: string, format: date }
+        customerDueDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    MatchDetail:
+      allOf:
+        - $ref: '#/components/schemas/MatchSummary'
+        - type: object
+          properties:
+            scoreBreakdown: { $ref: '#/components/schemas/ScoreBreakdown' }
+            event: { $ref: '#/components/schemas/RiskEventSummary' }
+            shipment: { $ref: '#/components/schemas/ShipmentSummary' }
+            area: { $ref: '#/components/schemas/EventArea' }
+            actions:
+              type: array
+              items: { $ref: '#/components/schemas/ActionLog' }
+            feedback:
+              type: array
+              items: { $ref: '#/components/schemas/Feedback' }
+
+    ScoreBreakdown:
+      type: object
+      description: 리스크 점수 산출 근거. 화면에서 3개 계수를 막대로 시각화한다.
+      properties:
+        formula: { type: string, example: riskScore = 100 × severityFactor × exposureFactor × confidenceFactor }
+        severityFactor: { type: number, format: float, example: 1.0, description: (이벤트 심각도/5)×0.7 + (지역 영향도/5)×0.3 }
+        exposureFactor: { type: number, format: float, example: 0.8851, description: 0.4 + 0.6×(가액 0.35 + 납기긴급도 0.40 + 경로경직성 0.25) }
+        confidenceFactor: { type: number, format: float, example: 0.8624, description: LLM 확신도 × 소스 신뢰가중치 }
+        severityRaw: { type: integer, example: 5 }
+        confidenceRaw: { type: number, format: float, example: 0.88 }
+        exposureDetail: { $ref: '#/components/schemas/ExposureDetail' }
+
+    ExposureDetail:
+      type: object
+      description: 노출도 세부 계수
+      properties:
+        valueNorm: { type: number, format: float, example: 0.725, description: 'min(화물가액 / 2,000,000 USD, 1)' }
+        urgency: { type: number, format: float, example: 0.7619, description: '1 − min(납기여유일수 / 21, 1)' }
+        routeRigidity: { type: number, format: float, example: 1.0, description: 대체 경로 있음 0.35 / 없음 1.00 }
+        weighted: { type: number, format: float, example: 0.8085 }
+
+    Playbook:
+      type: object
+      properties:
+        playbookId: { type: string, example: PB01 }
+        eventType: { type: string, example: GEOPOLITICAL, description: "'*' 는 전체 유형 적용" }
+        minGrade: { $ref: '#/components/schemas/RiskGrade' }
+        actionType: { $ref: '#/components/schemas/ActionType' }
+        title: { type: string, example: 희망봉 우회 항로로 변경 요청 }
+        description: { type: string }
+        estimatedCostUsd: { type: number, format: double, example: 42000 }
+        estimatedDelayReductionDays: { type: integer, example: 0 }
+        sortOrder: { type: integer, example: 1 }
+
+    ActionCreateRequest:
+      type: object
+      required: [actionType, content]
+      properties:
+        actionType: { $ref: '#/components/schemas/ActionType' }
+        content: { type: string, minLength: 5, example: '전쟁위험 특약 부보 확대 신청 (부보액 1,450,000 USD, 요율 0.42%)' }
+        result: { $ref: '#/components/schemas/ActionResult' }
+        resultNote: { type: string, nullable: true, example: '삼성화재 승인 완료, 증권번호 MC-2026-118842' }
+        playbookId: { type: string, nullable: true, description: 대응 시나리오를 선택한 경우 }
+        actedAt: { type: string, format: date-time, nullable: true }
+
+    ActionLog:
+      type: object
+      properties:
+        actionId: { type: string, example: AC0101 }
+        matchId: { type: string, example: MT0002 }
+        playbookId: { type: string, nullable: true, example: PB02 }
+        playbookTitle: { type: string, nullable: true }
+        userId: { type: string, example: U002 }
+        userName: { type: string, nullable: true, example: 김도현 }
+        actionType: { $ref: '#/components/schemas/ActionType' }
+        content: { type: string }
+        result: { $ref: '#/components/schemas/ActionResult' }
+        resultNote: { type: string, nullable: true }
+        actedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    FeedbackCreateRequest:
+      type: object
+      required: [isRelevant]
+      properties:
+        isRelevant: { type: boolean, example: false, description: 'false = 오탐 신고' }
+        actualDelayDays: { type: integer, nullable: true, example: 0 }
+        comment: { type: string, nullable: true, example: 사전 예약 슬롯 보유로 실제 대기 없이 통과 }
+
+    Feedback:
+      type: object
+      properties:
+        feedbackId: { type: string, example: FB0101 }
+        matchId: { type: string, example: MT0011 }
+        userId: { type: string, example: U004 }
+        userName: { type: string, nullable: true, example: 최민준 }
+        isRelevant: { type: boolean }
+        actualDelayDays: { type: integer, nullable: true }
+        comment: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    FeedbackSummary:
+      type: object
+      properties:
+        total: { type: integer, example: 1 }
+        relevant: { type: integer, example: 0 }
+        falsePositive: { type: integer, example: 1 }
+        precision: { type: number, format: float, nullable: true, example: 0.0, description: 유효 매칭 / 전체 피드백 }
+        avgActualDelayDays: { type: number, format: float, nullable: true, example: 0 }
+        byEvent:
+          type: array
+          items:
+            type: object
+            properties:
+              eventId: { type: string, example: EV05 }
+              eventTitle: { type: string, nullable: true }
+              total: { type: integer, example: 1 }
+              falsePositive: { type: integer, example: 1 }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Feedback' }
+
+    # ── 알림 ──
+    NotificationCreateRequest:
+      type: object
+      required: [matchId]
+      properties:
+        matchId: { type: string, example: MT0002 }
+        scope: { $ref: '#/components/schemas/NotificationScope' }
+        channel: { $ref: '#/components/schemas/NotificationChannel' }
+        recipientUserId: { type: string, nullable: true, description: 생략 시 화물 담당자 }
+        title: { type: string, nullable: true, description: 생략 시 자동 생성 }
+        message: { type: string, nullable: true, description: 생략 시 자동 생성 }
+
+    Notification:
+      type: object
+      properties:
+        notificationId: { type: string, example: NT03 }
+        matchId: { type: string, nullable: true, example: MT0006 }
+        eventId: { type: string, nullable: true, example: EV02 }
+        shipmentId: { type: string, nullable: true, example: SH009 }
+        shipmentNo: { type: string, nullable: true, example: SNR-2026-0009 }
+        recipientUserId: { type: string, example: U004 }
+        recipientName: { type: string, nullable: true, example: 최민준 }
+        channel: { $ref: '#/components/schemas/NotificationChannel' }
+        scope: { $ref: '#/components/schemas/NotificationScope' }
+        title: { type: string, example: '[대외] C&A Europe 납기 지연 사전 고지' }
+        message: { type: string }
+        status: { $ref: '#/components/schemas/NotificationStatus' }
+        requestedBy: { type: string, nullable: true, description: 'null 이면 임계값 초과에 의한 시스템 자동 발송' }
+        requesterName: { type: string, nullable: true }
+        approvedBy: { type: string, nullable: true }
+        approverName: { type: string, nullable: true }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        sentAt: { type: string, format: date-time, nullable: true }
+        readAt: { type: string, format: date-time, nullable: true }
+        failReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    # ── 관리자 ──
+    ApprovalRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [APPROVE, REJECT] }
+        reason: { type: string, description: 'decision = REJECT 일 때 필수', example: 인보이스 가액과 첨부 P/L 금액이 불일치합니다. }
+
+    RiskSource:
+      type: object
+      properties:
+        sourceId: { type: string, example: SRC03 }
+        name: { type: string, example: UKMTO 항행경보 }
+        sourceType: { $ref: '#/components/schemas/SourceType' }
+        url: { type: string, format: uri }
+        language: { type: string, example: en }
+        trustWeight: { type: number, format: float, minimum: 0, maximum: 1, example: 0.98 }
+        collectIntervalMin: { type: integer, example: 10 }
+        enabled: { type: boolean, example: true }
+        lastCollectedAt: { type: string, format: date-time, nullable: true }
+        feedCount: { type: integer, example: 4 }
+        eventCount: { type: integer, example: 2 }
+        lastJob:
+          allOf: [{ $ref: '#/components/schemas/CollectionJob' }]
+          nullable: true
+
+    RiskSourceCreateRequest:
+      type: object
+      required: [name, sourceType, url]
+      properties:
+        name: { type: string, example: ReCAAP ISC }
+        sourceType: { $ref: '#/components/schemas/SourceType' }
+        url: { type: string, format: uri, example: 'https://recaap.org/alerts' }
+        language: { type: string, default: en }
+        trustWeight: { type: number, format: float, minimum: 0, maximum: 1, default: 0.8 }
+        collectIntervalMin: { type: integer, default: 60 }
+        enabled: { type: boolean, default: true }
+
+    RiskThreshold:
+      type: object
+      properties:
+        grade: { $ref: '#/components/schemas/RiskGrade' }
+        minScore: { type: integer, minimum: 0, maximum: 100, example: 50 }
+        maxScore: { type: integer, minimum: 0, maximum: 100, example: 74 }
+        color: { type: string, example: '#ff8a3d' }
+        notifyEnabled: { type: boolean, example: true }
+        requiresApproval: { type: boolean, example: true, description: 대외 발송 시 관리자 승인 필요 여부 }
+        updatedBy: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    RiskThresholdUpsert:
+      type: object
+      required: [grade, minScore, maxScore]
+      properties:
+        grade: { $ref: '#/components/schemas/RiskGrade' }
+        minScore: { type: integer, minimum: 0, maximum: 100 }
+        maxScore: { type: integer, minimum: 0, maximum: 100 }
+        color: { type: string }
+        notifyEnabled: { type: boolean }
+        requiresApproval: { type: boolean }
+
+    CollectionJob:
+      type: object
+      properties:
+        jobId: { type: string, example: CJ01 }
+        sourceId: { type: string, example: SRC03 }
+        sourceName: { type: string, nullable: true, example: UKMTO 항행경보 }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time, nullable: true }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        fetchedCount: { type: integer, example: 4 }
+        processedCount: { type: integer, example: 4 }
+        errorMessage: { type: string, nullable: true }
+
+    AuditLog:
+      type: object
+      properties:
+        auditId: { type: string, example: AL01 }
+        actorUserId: { type: string, example: U001 }
+        actorName: { type: string, example: 박시윤 }
+        action: { type: string, example: EVENT_PUBLISHED }
+        targetType: { type: string, example: RISK_EVENT }
+        targetId: { type: string, example: EV03 }
+        detail: { type: string, nullable: true }
+        ip: { type: string, nullable: true, example: 10.20.3.41 }
+        createdAt: { type: string, format: date-time }
+
+    AdminOverview:
+      type: object
+      properties:
+        baseDate: { type: string, format: date-time }
+        users:
+          type: object
+          properties:
+            total: { type: integer, example: 7 }
+            active: { type: integer, example: 4 }
+            pending: { type: integer, example: 2 }
+            rejected: { type: integer, example: 1 }
+        companies:
+          type: object
+          properties:
+            total: { type: integer, example: 3 }
+        shipments:
+          type: object
+          properties:
+            total: { type: integer, example: 18 }
+            pendingApproval: { type: integer, example: 2 }
+            inTransit: { type: integer, example: 14 }
+        pipeline:
+          type: object
+          description: FR-01 수집 → FR-02 정형화 → FR-03 매칭 파이프라인 현황
+          properties:
+            enabledSourceCount: { type: integer, example: 7 }
+            totalSourceCount: { type: integer, example: 8 }
+            collectedToday: { type: integer, example: 12 }
+            totalFeedCount: { type: integer, example: 12 }
+            pendingFeedCount: { type: integer, example: 2 }
+            discardedFeedCount: { type: integer, example: 1 }
+            draftEventCount: { type: integer, example: 2 }
+            publishedEventCount: { type: integer, example: 7 }
+            dismissedEventCount: { type: integer, example: 1 }
+            lastCollectedAt: { type: string, format: date-time, nullable: true }
+        matches:
+          type: object
+          properties:
+            total: { type: integer, example: 24 }
+            byGrade:
+              type: object
+              properties:
+                CRITICAL: { type: integer, example: 3 }
+                HIGH: { type: integer, example: 3 }
+                MEDIUM: { type: integer, example: 13 }
+                LOW: { type: integer, example: 5 }
+            falsePositive: { type: integer, example: 1 }
+        notifications:
+          type: object
+          properties:
+            pendingApproval: { type: integer, example: 2 }
+            sent: { type: integer, example: 3 }
+            failed: { type: integer, example: 1 }
+        feedback:
+          type: object
+          properties:
+            total: { type: integer, example: 1 }
+            falsePositive: { type: integer, example: 1 }
+            precision: { type: number, format: float, nullable: true, example: 0.0 }
+        recentJobs:
+          type: array
+          items: { $ref: '#/components/schemas/CollectionJob' }
+        recentAudits:
+          type: array
+          items: { $ref: '#/components/schemas/AuditLog' }
