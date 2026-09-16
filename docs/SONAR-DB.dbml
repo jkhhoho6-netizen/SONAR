@@ -3,15 +3,20 @@
 //  데이터 모델 (ERD)
 //
 //  https://dbdiagram.io 에 붙여넣으면 ERD 가 자동 생성됩니다.
-//  엔터티 18 · 관계 30
+//  엔터티 16 · 관계 21
 //
 //  [API 식별자 매핑]
 //  API 는 사용자가 읽기 쉬운 이름을 쓰고, 모델은 통합 엔터티를 쓴다.
 //    portId / originPortId / destinationPortId  →  location.location_id (location_type = PORT)
 //    chokePointId                               →  location.location_id (location_type = CHOKEPOINT)
 //    Port / ChokePoint 스키마                    →  location 의 타입별 뷰
+//    rawFeedId                                  →  risk_event.event_id (status = COLLECTED)
+//    RawFeed 스키마                              →  risk_event 의 raw_* 컬럼 뷰
+//    RawFeed.publishedAt                        →  risk_event.raw_published_at
+//    RawFeed.status / RiskEvent.status          →  risk_event.status (통합 라이프사이클)
 //    CollectionJob 스키마                        →  risk_source 의 last_* 컬럼 뷰
 //    Feedback 스키마                             →  impact_match 의 feedback_* 컬럼 뷰
+//    approverName / reviewerName                →  audit_log 조인 파생
 // ════════════════════════════════════════════════════════════════
 
 
@@ -40,11 +45,6 @@ Enum location_type {
   CHOKEPOINT
 }
 
-Enum leg_type {
-  PORT_CALL
-  TRANSIT
-}
-
 Enum voyage_status {
   SCHEDULED
   IN_TRANSIT
@@ -69,10 +69,12 @@ Enum source_type {
   SOCIAL
 }
 
-Enum feed_process_status {
-  PENDING
-  PROCESSED
-  DISCARDED
+Enum event_status {
+  COLLECTED
+  DRAFT
+  PUBLISHED
+  EXPIRED
+  DISMISSED
   FAILED
 }
 
@@ -86,13 +88,6 @@ Enum event_type {
   EPIDEMIC
   REGULATION
   PIRACY
-}
-
-Enum event_status {
-  DRAFT
-  PUBLISHED
-  EXPIRED
-  DISMISSED
 }
 
 Enum match_reason {
@@ -184,14 +179,16 @@ Table user {
   reject_reason varchar(500)
   created_at    timestamp    [not null, default: `now()`]
   approved_at   timestamp
-  approved_by   varchar(10)  [note: '승인 처리한 관리자']
   last_login_at timestamp
 
   Indexes {
     (company_id, status)
   }
 
-  Note: '가입 시 PENDING 으로 생성되며 관리자 승인 후에만 로그인할 수 있다.'
+  Note: '''
+  가입 시 PENDING 으로 생성되며 관리자 승인 후에만 로그인할 수 있다.
+  "누가 승인했는지"는 audit_log 가 단독으로 책임진다.
+  '''
 }
 
 
@@ -241,25 +238,11 @@ Table voyage {
   Indexes {
     (vessel_id, voyage_no) [unique]
   }
-}
-
-Table voyage_leg {
-  voyage_leg_id varchar(10) [pk]
-  voyage_id     varchar(10) [not null]
-  seq           smallint    [not null, note: '항차 내 순서']
-  leg_type      leg_type    [not null, note: 'PORT_CALL 기항 / TRANSIT 요충지 통과']
-  location_id   varchar(10) [not null]
-  eta           date        [note: '기항 도착 예정일 또는 요충지 통과 예정일']
-  etd           date        [note: '기항 출항 예정일. TRANSIT 은 NULL']
-
-  Indexes {
-    (voyage_id, seq) [unique]
-  }
 
   Note: '''
-  항차가 거쳐가는 모든 지점을 한 테이블로 관리한다.
-  기항지와 통과 요충지는 "날짜를 가진 경유 지점"이라는 점에서 같으므로
-  leg_type 으로만 구분하고 테이블을 나누지 않는다.
+  선박의 1회 운항. 지도에 찍히는 아이콘 1개가 voyage 1건이다.
+  기항 스케줄은 선사 고유 데이터이므로 SONAR 는 보관하지 않는다.
+  지도의 항로 폴리라인은 적재된 화물의 shipment_leg 를 날짜순으로 합쳐서 그린다.
   '''
 }
 
@@ -291,7 +274,6 @@ Table shipment {
   reject_reason               varchar(500)
   created_at                  timestamp       [not null, default: `now()`]
   approved_at                 timestamp
-  approved_by                 varchar(10)
 
   Indexes {
     (company_id, status)
@@ -317,8 +299,8 @@ Table shipment_leg {
   }
 
   Note: '''
-  화물이 통과할 요충지와 예정일. 요충지 통과 매칭의 직접 판정 근거.
-  항차가 배정되면 voyage_leg 에서 파생되고, 미배정이면 출발·도착항으로 자동 산출한다.
+  화물이 통과할 요충지와 예정일. 요충지 통과 매칭의 직접 판정 근거이자
+  지도 항로 폴리라인의 좌표원이다. 등록 시 출발·도착항으로부터 자동 산출된다.
   '''
 }
 
@@ -345,51 +327,50 @@ Table risk_source {
   '''
 }
 
-Table raw_feed {
-  raw_feed_id    varchar(10)         [pk]
-  source_id      varchar(10)         [not null]
-  external_id    varchar(100)        [not null, note: '소스 내 고유 식별자']
-  title          varchar(500)        [not null]
-  body           text                [not null, note: '원문 본문']
-  url            varchar(500)
-  published_at   timestamp           [not null]
-  collected_at   timestamp           [not null, default: `now()`]
-  process_status feed_process_status [not null, default: 'PENDING']
-  discard_reason varchar(500)
+Table risk_event {
+  event_id          varchar(10)  [pk]
+  source_id         varchar(10)  [not null]
+  status            event_status [not null, default: 'COLLECTED']
+
+  // ── 원문 (수집 단계에서 채워진다) ──
+  external_id       varchar(100) [not null, note: '소스 내 고유 식별자']
+  raw_title         varchar(500) [not null]
+  raw_body          text         [not null, note: '원문 본문. 담당자가 정형화 결과와 대조한다']
+  raw_url           varchar(500)
+  raw_published_at  timestamp    [not null, note: '원문 게재 시각']
+  collected_at      timestamp    [not null, default: `now()`]
+
+  // ── 정형화 (LLM 이 채운다. 수집 직후에는 NULL) ──
+  event_type        event_type
+  title             varchar(200)
+  summary           text
+  severity          smallint     [note: '1~5. CHECK (severity BETWEEN 1 AND 5)']
+  confidence        decimal(3,2) [note: '0.00~1.00. LLM 확신도']
+  start_date        date
+  expected_end_date date
+  llm_model         varchar(50)
+  llm_extracted_at  timestamp
+
+  // ── 검토 · 발행 ──
+  reviewed_at       timestamp
+  review_note       varchar(500) [note: '판단 근거 / 기각 사유 / 정형화 실패 사유']
+  published_at      timestamp    [note: '발행(PUBLISHED 전이) 시각']
 
   Indexes {
     (source_id, external_id) [unique]
-    (process_status, collected_at)
-  }
-
-  Note: '수집된 뉴스·공지·기상 정보의 원문. 담당자 화면에서 정형화 결과와 대조할 수 있다.'
-}
-
-Table risk_event {
-  event_id          varchar(10)  [pk]
-  raw_feed_id       varchar(10)  [not null, unique, note: '원문 1건당 이벤트 1건 (1:1)']
-  event_type        event_type   [not null]
-  status            event_status [not null, default: 'DRAFT']
-  title             varchar(200) [not null]
-  summary           text         [not null]
-  severity          smallint     [not null, note: '1~5. CHECK (severity BETWEEN 1 AND 5)']
-  confidence        decimal(3,2) [not null, note: '0.00~1.00. LLM 확신도']
-  start_date        date         [not null]
-  expected_end_date date         [not null]
-  llm_model         varchar(50)
-  llm_extracted_at  timestamp
-  reviewed_by       varchar(10)  [note: '검토한 관리자']
-  reviewed_at       timestamp
-  review_note       varchar(500) [note: '판단 근거 / 기각 사유']
-  published_at      timestamp
-
-  Indexes {
     (status, start_date)
   }
 
   Note: '''
-  LLM 이 원문을 유형·심각도·신뢰도·기간으로 구조화한 결과.
-  관리자가 검토해 PUBLISHED 로 발행해야 담당자 화면에 노출되고 매칭이 수행된다.
+  수집된 원문 1건이 곧 리스크 이벤트 1건이다. 원문과 정형화 결과를 별도 테이블로
+  나누면 항상 1:1 로만 이어지므로, 하나의 행이 라이프사이클을 따라가도록 통합했다.
+
+    COLLECTED → DRAFT → PUBLISHED → EXPIRED
+                  └──→ DISMISSED (무관·오탐으로 기각)
+                  └──→ FAILED    (정형화 실패)
+
+  정형화 컬럼이 NULL 허용인 것은 COLLECTED 단계에서는 아직 값이 없기 때문이다.
+  PUBLISHED 로 전이하려면 event_type · severity · confidence · 기간이 모두 채워져야 한다.
   CHECK (expected_end_date >= start_date)
   '''
 }
@@ -412,28 +393,27 @@ Table event_area {
 // ═══════════════ 5. 매칭 · 대응 ═══════════════
 
 Table impact_match {
-  match_id            varchar(10)  [pk]
-  event_id            varchar(10)  [not null]
-  shipment_id         varchar(10)  [not null]
-  event_area_id       varchar(10)  [not null, note: '매칭을 성립시킨 영향 지역']
-  match_reason        match_reason [not null]
-  exposure_date       date         [not null, note: '실제 노출 시점 (통과일 또는 기항일)']
-  expected_delay_days smallint     [not null, default: 0]
-  buffer_days         smallint     [not null, note: '고객 납기일 − ETA']
-  risk_score          smallint     [not null, note: '0~100']
-  risk_grade          risk_grade   [not null]
-  severity_factor     decimal(6,4) [not null, note: '(심각도/5)×0.7 + (지역 영향도/5)×0.3']
-  exposure_factor     decimal(6,4) [not null, note: '0.4 + 0.6×(가액 0.35 + 납기긴급도 0.40 + 경로경직성 0.25)']
-  confidence_factor   decimal(6,4) [not null, note: 'LLM 확신도 × 소스 신뢰가중치']
-  provisional         boolean      [not null, default: false, note: '화물 승인 전 잠정 결과']
-  status              match_status [not null, default: 'OPEN']
-  feedback_is_relevant      boolean     [note: 'false = 오탐. 매칭 정확도 산출의 원천']
-  feedback_actual_delay_days smallint   [note: '실제 발생한 지연 일수']
-  feedback_comment          varchar(500)
-  feedback_by               varchar(10) [note: '피드백을 남긴 담당자']
-  feedback_at               timestamp
-  created_at          timestamp    [not null, default: `now()`]
-  updated_at          timestamp    [not null, default: `now()`]
+  match_id                   varchar(10)  [pk]
+  event_id                   varchar(10)  [not null]
+  shipment_id                varchar(10)  [not null]
+  event_area_id              varchar(10)  [not null, note: '매칭을 성립시킨 영향 지역']
+  match_reason               match_reason [not null]
+  exposure_date              date         [not null, note: '실제 노출 시점 (통과일 또는 기항일)']
+  expected_delay_days        smallint     [not null, default: 0]
+  buffer_days                smallint     [not null, note: '고객 납기일 − ETA']
+  risk_score                 smallint     [not null, note: '0~100']
+  risk_grade                 risk_grade   [not null]
+  severity_factor            decimal(6,4) [not null, note: '(심각도/5)×0.7 + (지역 영향도/5)×0.3']
+  exposure_factor            decimal(6,4) [not null, note: '0.4 + 0.6×(가액 0.35 + 납기긴급도 0.40 + 경로경직성 0.25)']
+  confidence_factor          decimal(6,4) [not null, note: 'LLM 확신도 × 소스 신뢰가중치']
+  provisional                boolean      [not null, default: false, note: '화물 승인 전 잠정 결과']
+  status                     match_status [not null, default: 'OPEN']
+  feedback_is_relevant       boolean      [note: 'false = 오탐. 매칭 정확도 산출의 원천']
+  feedback_actual_delay_days smallint     [note: '실제 발생한 지연 일수']
+  feedback_comment           varchar(500)
+  feedback_at                timestamp
+  created_at                 timestamp    [not null, default: `now()`]
+  updated_at                 timestamp    [not null, default: `now()`]
 
   Indexes {
     (event_id, shipment_id) [unique]
@@ -446,7 +426,7 @@ Table impact_match {
   riskScore = 100 × severity_factor × exposure_factor × confidence_factor
   하나의 (이벤트, 화물) 쌍에 대해 가장 높은 점수의 근거 1건만 대표로 저장한다.
 
-  매칭 피드백은 건당 1회만 남기므로 별도 엔터티 없이 feedback_* 컬럼으로 기록한다.
+  매칭 피드백은 건당 1회, 화물 담당자만 남기므로 별도 엔터티 없이 feedback_* 컬럼으로 기록한다.
   feedback_is_relevant = false 이면 status 가 FALSE_POSITIVE 로 전이된다.
   '''
 }
@@ -503,13 +483,13 @@ Table notification {
   notification_id   varchar(10)          [pk]
   match_id          varchar(10)          [not null, note: '이벤트·화물은 이 매칭을 통해 확인한다']
   recipient_user_id varchar(10)          [not null]
-  requested_by      varchar(10)          [note: 'NULL = 임계값 초과에 의한 시스템 자동 발송']
-  approved_by       varchar(10)          [note: '대외 발송 승인 관리자']
+  auto_sent         boolean              [not null, default: true, note: 'true = 임계값 초과에 의한 시스템 자동 발송']
   channel           notification_channel [not null, default: 'ALIMTALK']
   scope             notification_scope   [not null, default: 'INTERNAL']
   title             varchar(200)         [not null]
   message           varchar(1000)        [not null]
   status            notification_status  [not null]
+  approved_at       timestamp            [note: '대외 발송 승인 시각. 승인자는 audit_log 에 남는다']
   sent_at           timestamp
   read_at           timestamp
   fail_reason       varchar(500)
@@ -522,23 +502,32 @@ Table notification {
   Note: '''
   사내(INTERNAL) 발송은 임계값 초과 시 자동 전송되고,
   대외(EXTERNAL) 발송은 PENDING_APPROVAL 로 관리자 승인 대기열에 들어간다.
+  발송 요청자·승인자는 audit_log 가 기록한다.
   '''
 }
 
 Table audit_log {
   audit_id      varchar(10) [pk]
   actor_user_id varchar(10) [not null]
-  action        varchar(50) [not null, note: 'EVENT_PUBLISH / SHIPMENT_APPROVE / THRESHOLD_UPDATE …']
-  target_type   varchar(30) [not null]
+  action        varchar(50) [not null, note: 'USER_APPROVE / SHIPMENT_APPROVE / EVENT_PUBLISH / NOTIFICATION_APPROVE / THRESHOLD_UPDATE …']
+  target_type   varchar(30) [not null, note: 'USER / SHIPMENT / RISK_EVENT / NOTIFICATION / RISK_THRESHOLD']
   target_id     varchar(20) [not null]
   detail        varchar(500)
   created_at    timestamp   [not null, default: `now()`]
 
   Indexes {
     (actor_user_id, created_at)
+    (target_type, target_id)
   }
 
-  Note: '관리자의 시스템 변경 이력. 기준 변경·승인·기각의 추적 가능성 확보'
+  Note: '''
+  "누가 무엇을 했는가"를 전담하는 단일 창구.
+
+  승인·검토·발행 주체를 각 테이블의 approved_by / reviewed_by 컬럼으로 흩어 두면
+  user 로 향하는 FK 가 6개 늘어나 ERD 가독성에도 관리에도 부담이 된다.
+  각 테이블은 시점(approved_at, reviewed_at)만 갖고, 주체는 여기서 조회한다.
+  API 의 approverName / reviewerName 은 (target_type, target_id) 인덱스로 조인해 채운다.
+  '''
 }
 
 
@@ -546,17 +535,13 @@ Table audit_log {
 
 // 테넌트 · 사용자
 Ref: user.company_id                   > company.company_id      // 1:N
-Ref: user.approved_by                  > user.user_id            // 자기참조
 
 // 선박 · 항차
 Ref: voyage.vessel_id                  > vessel.vessel_id        // 1:N
-Ref: voyage_leg.voyage_id              > voyage.voyage_id        // 1:N
-Ref: voyage_leg.location_id            > location.location_id    // 1:N
 
 // 화물
 Ref: shipment.company_id               > company.company_id      // 1:N
 Ref: shipment.owner_user_id            > user.user_id            // 1:N
-Ref: shipment.approved_by              > user.user_id            // 1:N
 Ref: shipment.voyage_id                > voyage.voyage_id        // 1:N
 Ref: shipment.origin_location_id       > location.location_id    // 1:N
 Ref: shipment.destination_location_id  > location.location_id    // 1:N
@@ -564,9 +549,7 @@ Ref: shipment_leg.shipment_id          > shipment.shipment_id    // 1:N
 Ref: shipment_leg.location_id          > location.location_id    // 1:N
 
 // 리스크 파이프라인
-Ref: raw_feed.source_id                > risk_source.source_id   // 1:N
-Ref: risk_event.raw_feed_id            - raw_feed.raw_feed_id    // 1:1
-Ref: risk_event.reviewed_by            > user.user_id            // 1:N
+Ref: risk_event.source_id              > risk_source.source_id   // 1:N
 Ref: event_area.event_id               > risk_event.event_id     // 1:N
 Ref: event_area.location_id            > location.location_id    // 1:N
 
@@ -574,7 +557,6 @@ Ref: event_area.location_id            > location.location_id    // 1:N
 Ref: impact_match.event_id             > risk_event.event_id     // 1:N
 Ref: impact_match.shipment_id          > shipment.shipment_id    // 1:N
 Ref: impact_match.event_area_id        > event_area.event_area_id// 1:N
-Ref: impact_match.feedback_by          > user.user_id            // 1:N
 
 // 대응
 Ref: action_log.match_id               > impact_match.match_id   // 1:N
@@ -584,8 +566,6 @@ Ref: action_log.user_id                > user.user_id            // 1:N
 // 알림 · 감사
 Ref: notification.match_id             > impact_match.match_id   // 1:N
 Ref: notification.recipient_user_id    > user.user_id            // 1:N
-Ref: notification.requested_by         > user.user_id            // 1:N
-Ref: notification.approved_by          > user.user_id            // 1:N
 Ref: audit_log.actor_user_id           > user.user_id            // 1:N
 
 
@@ -600,7 +580,6 @@ TableGroup master_data {
   location
   vessel
   voyage
-  voyage_leg
 }
 
 TableGroup shipment_domain {
@@ -610,7 +589,6 @@ TableGroup shipment_domain {
 
 TableGroup risk_pipeline {
   risk_source
-  raw_feed
   risk_event
   event_area
 }

@@ -901,9 +901,11 @@ paths:
       description: 수집된 뉴스·공지의 원문과 정형화 처리 상태를 조회한다.
       x-screen: [24_feed_list]
       parameters:
-        - name: processStatus
+        - name: status
           in: query
-          schema: { type: string, example: PENDING }
+          schema:
+            allOf: [{ $ref: '#/components/schemas/EventStatus' }]
+            example: COLLECTED
         - name: sourceId
           in: query
           schema: { type: string }
@@ -1524,7 +1526,13 @@ components:
     ShipmentStatus: { type: string, enum: [PENDING_APPROVAL, ACTIVE, IN_TRANSIT, ARRIVED, REJECTED, CANCELLED] }
     VoyageStatus: { type: string, enum: [SCHEDULED, IN_TRANSIT, DELAYED, ARRIVED] }
     EventType: { type: string, enum: [GEOPOLITICAL, WEATHER, PORT_CONGESTION, LABOR_STRIKE, SANCTION, ACCIDENT, EPIDEMIC, REGULATION, PIRACY] }
-    EventStatus: { type: string, enum: [DRAFT, PUBLISHED, EXPIRED, DISMISSED] }
+    EventStatus:
+      type: string
+      description: |
+        리스크 이벤트의 라이프사이클. 수집된 원문 1건이 곧 이벤트 1건이므로 원문 처리 상태와 발행 상태를 하나로 관리한다.
+        COLLECTED 원문만 수집 · DRAFT 정형화 완료(검토 대기) · PUBLISHED 발행 · EXPIRED 기간 종료 · DISMISSED 기각 · FAILED 정형화 실패
+      enum: [COLLECTED, DRAFT, PUBLISHED, EXPIRED, DISMISSED, FAILED]
+      example: PUBLISHED
     AreaType: { type: string, enum: [PORT, CHOKEPOINT] }
     MatchReason:
       type: string
@@ -1538,7 +1546,6 @@ components:
     ActionType: { type: string, enum: [REROUTE, EXPEDITE, NOTIFY_CUSTOMER, INSURANCE_CLAIM, HOLD, MONITOR, OTHER] }
     ActionResult: { type: string, enum: [PENDING, IN_PROGRESS, DONE, FAILED] }
     SourceType: { type: string, enum: [NEWS, GOV, NOTICE, WEATHER, SOCIAL] }
-    FeedProcessStatus: { type: string, enum: [PENDING, PROCESSED, DISCARDED, FAILED] }
     NotificationChannel: { type: string, enum: [ALIMTALK, EMAIL, IN_APP] }
     NotificationScope:
       type: string
@@ -1752,7 +1759,7 @@ components:
                   topRiskGrade: { $ref: '#/components/schemas/RiskGradeOrNone' }
             waypoints:
               type: array
-              description: 항로 폴리라인 좌표 (기항지 + 통과 요충지를 날짜순 정렬)
+              description: 항로 폴리라인 좌표. 적재 화물의 출발·도착항과 통과 요충지(shipment_leg)를 날짜순으로 합쳐 산출한다.
               items: { $ref: '#/components/schemas/Waypoint' }
 
     Waypoint:
@@ -1858,8 +1865,7 @@ components:
             memo: { type: string, nullable: true }
             rejectReason: { type: string, nullable: true, description: 반려 사유 }
             approvedAt: { type: string, format: date-time, nullable: true }
-            approvedBy: { type: string, nullable: true }
-            approverName: { type: string, nullable: true }
+            approverName: { type: string, nullable: true, description: 'audit_log(SHIPMENT_APPROVE) 조인 파생' }
             routePoints:
               type: array
               description: 통과 예정 해상 요충지
@@ -1918,7 +1924,7 @@ components:
             trustWeight: { type: number, format: float, nullable: true, example: 0.98 }
             llmModel: { type: string, nullable: true, example: claude-opus-5 }
             llmExtractedAt: { type: string, format: date-time, nullable: true }
-            reviewerName: { type: string, nullable: true, example: 박시윤 }
+            reviewerName: { type: string, nullable: true, example: 박시윤, description: 'audit_log(EVENT_PUBLISH / EVENT_DISMISS) 조인 파생' }
             reviewedAt: { type: string, format: date-time, nullable: true }
             reviewNote: { type: string, nullable: true }
 
@@ -1927,7 +1933,6 @@ components:
         - $ref: '#/components/schemas/RiskEventAdminSummary'
         - type: object
           properties:
-            reviewedBy: { type: string, nullable: true }
             areas:
               type: array
               items: { $ref: '#/components/schemas/EventArea' }
@@ -1983,7 +1988,7 @@ components:
 
     RawFeedRef:
       type: object
-      description: 이벤트의 근거가 된 수집 원문
+      description: 이벤트의 근거가 된 수집 원문. risk_event 의 원문 컬럼(raw_*)에 대한 뷰이며 rawFeedId 는 eventId 와 같은 값이다.
       properties:
         rawFeedId: { type: string, example: RF02 }
         sourceId: { type: string, example: SRC03 }
@@ -1993,7 +1998,7 @@ components:
         title: { type: string }
         body: { type: string, description: 원문 본문 }
         url: { type: string, format: uri, nullable: true }
-        publishedAt: { type: string, format: date-time }
+        publishedAt: { type: string, format: date-time, description: 원문 게재 시각 }
         collectedAt: { type: string, format: date-time }
 
     RawFeed:
@@ -2002,13 +2007,10 @@ components:
         - type: object
           properties:
             externalId: { type: string, example: UKMTO-2026-0901-B }
-            processStatus: { $ref: '#/components/schemas/FeedProcessStatus' }
-            discardReason: { type: string, nullable: true }
-            eventId: { type: string, nullable: true }
-            eventStatus:
-              allOf: [{ $ref: '#/components/schemas/EventStatus' }]
-              nullable: true
-            eventTitle: { type: string, nullable: true }
+            status: { $ref: '#/components/schemas/EventStatus' }
+            eventId: { type: string, nullable: true, description: 정형화 이후 부여되는 이벤트 식별자. COLLECTED 단계에서는 rawFeedId 와 동일하다 }
+            eventTitle: { type: string, nullable: true, description: 정형화 전에는 null }
+            reviewNote: { type: string, nullable: true, description: 기각 사유 · 정형화 실패 사유 }
 
     # ── 매칭 ──
     MatchSummary:
@@ -2187,10 +2189,9 @@ components:
         title: { type: string, example: '[대외] C&A Europe 납기 지연 사전 고지' }
         message: { type: string }
         status: { $ref: '#/components/schemas/NotificationStatus' }
-        requestedBy: { type: string, nullable: true, description: 'null 이면 임계값 초과에 의한 시스템 자동 발송' }
-        requesterName: { type: string, nullable: true }
-        approvedBy: { type: string, nullable: true }
-        approverName: { type: string, nullable: true }
+        autoSent: { type: boolean, example: true, description: true 면 임계값 초과에 의한 시스템 자동 발송 }
+        requesterName: { type: string, nullable: true, description: 'autoSent=false 인 경우 audit_log 조인 파생' }
+        approverName: { type: string, nullable: true, description: 'audit_log(NOTIFICATION_APPROVE) 조인 파생' }
         approvedAt: { type: string, format: date-time, nullable: true }
         sentAt: { type: string, format: date-time, nullable: true }
         readAt: { type: string, format: date-time, nullable: true }

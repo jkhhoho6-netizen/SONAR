@@ -44,8 +44,8 @@ app/
 
 | 파일 | 내용 |
 |---|---|
-| `SONAR-API.yml` | OpenAPI 3.0 API 명세 — 오퍼레이션 44, 스키마 70 |
-| `SONAR-DB.dbml` | 데이터 모델 — 엔터티 18, 관계 30 (dbdiagram.io 에서 ERD 생성) |
+| `SONAR-API.yml` | OpenAPI 3.0 API 명세 — 오퍼레이션 44, 스키마 69 |
+| `SONAR-DB.dbml` | 데이터 모델 — 엔터티 16, 관계 21 (dbdiagram.io 에서 ERD 생성) |
 | `ui-flow.html` | UI 흐름도 4페이지 (전체 흐름 · 연계와 예외 · 화면별 API 매핑 2장) |
 
 세 문서는 서로 맞물려 있다.
