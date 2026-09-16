@@ -366,7 +366,7 @@
       <span class="no">06</span>
       <h1>화면별 API 매핑 — 공통 · 화물 운영 담당자</h1>
       <div class="sp"></div>
-      <div class="meta">SONAR · 해상물류 공급망 리스크 레이더<br>화면 16 · API 호출 31</div>
+      <div class="meta">SONAR · 해상물류 공급망 리스크 레이더<br>화면 16 · API 호출 25</div>
     </div>
     <div class="legend">
       <span class="k"><i class="m g">GET</i> 조회</span>
@@ -391,8 +391,8 @@
     </tr>
 <tr>
       <td class="sc cm"><b>공통 셸</b><code>00_shell</code></td>
-      <td class="ap"><span class="api"><i class="m p">POST</i>/auth/logout<em>로그아웃</em></span><span class="api na"><i class="m g">GET</i>/auth/me<em>내 계정 정보 조회</em></span><span class="api"><i class="m g">GET</i>/dashboard/summary<em>리스크 요약 지표 조회</em></span><span class="api"><i class="m g">GET</i>/admin/overview<em>운영 현황 요약 조회</em></span></td>
-      <td class="ct">4</td>
+      <td class="ap"><span class="api"><i class="m p">POST</i>/auth/logout<em>로그아웃</em></span><span class="api"><i class="m g">GET</i>/dashboard/summary<em>리스크 요약 지표 조회</em></span><span class="api"><i class="m g">GET</i>/admin/overview<em>운영 현황 요약 조회</em></span></td>
+      <td class="ct">3</td>
     </tr>
 <tr>
       <td class="sc op"><b>리스크 레이더</b><code>10_radar</code></td>
@@ -406,13 +406,13 @@
     </tr>
 <tr>
       <td class="sc op"><b>영향 건 상세</b><code>12_match_detail</code></td>
-      <td class="ap"><span class="api"><i class="m g">GET</i>/matches/{matchId}<em>영향 건 상세 조회</em></span><span class="api na"><i class="m a">PATCH</i>/matches/{matchId}<em>영향 건 처리 상태 변경</em></span><span class="api"><i class="m g">GET</i>/matches/{matchId}/playbooks<em>대응 시나리오 조회</em></span></td>
-      <td class="ct">3</td>
+      <td class="ap"><span class="api"><i class="m g">GET</i>/matches/{matchId}<em>영향 건 상세 조회</em></span><span class="api"><i class="m g">GET</i>/matches/{matchId}/playbooks<em>대응 시나리오 조회</em></span></td>
+      <td class="ct">2</td>
     </tr>
 <tr>
       <td class="sc op"><b>대응 시나리오 · 조치 등록</b><code>12a_action_create</code></td>
-      <td class="ap"><span class="api"><i class="m g">GET</i>/matches/{matchId}/playbooks<em>대응 시나리오 조회</em></span><span class="api"><i class="m p">POST</i>/matches/{matchId}/actions<em>조치 등록</em></span><span class="api na"><i class="m a">PATCH</i>/actions/{actionId}<em>조치 결과 수정</em></span></td>
-      <td class="ct">3</td>
+      <td class="ap"><span class="api"><i class="m g">GET</i>/matches/{matchId}/playbooks<em>대응 시나리오 조회</em></span><span class="api"><i class="m p">POST</i>/matches/{matchId}/actions<em>조치 등록</em></span></td>
+      <td class="ct">2</td>
     </tr>
 <tr>
       <td class="sc op"><b>알림 발송 요청</b><code>12b_notify_request</code></td>
@@ -441,8 +441,8 @@
     </tr>
 <tr>
       <td class="sc op"><b>화물 등록</b><code>16_shipment_create</code></td>
-      <td class="ap"><span class="api"><i class="m g">GET</i>/ports<em>항만 목록 조회</em></span><span class="api na"><i class="m g">GET</i>/carriers<em>선사 목록 조회</em></span><span class="api"><i class="m g">GET</i>/voyages<em>항차 목록 조회</em></span><span class="api"><i class="m p">POST</i>/shipments<em>화물 등록</em></span></td>
-      <td class="ct">4</td>
+      <td class="ap"><span class="api"><i class="m g">GET</i>/ports<em>항만 목록 조회</em></span><span class="api"><i class="m g">GET</i>/voyages<em>항차 목록 조회</em></span><span class="api"><i class="m p">POST</i>/shipments<em>화물 등록</em></span></td>
+      <td class="ct">3</td>
     </tr>
 <tr>
       <td class="sc op"><b>경유 요충지 자동 산출</b><code>16a_route_preview</code></td>
@@ -451,8 +451,8 @@
     </tr>
 <tr>
       <td class="sc op"><b>화물 상세</b><code>17_shipment_detail</code></td>
-      <td class="ap"><span class="api"><i class="m g">GET</i>/shipments/{shipmentId}<em>화물 상세 조회</em></span><span class="api na"><i class="m a">PATCH</i>/shipments/{shipmentId}<em>화물 수정</em></span><span class="api na"><i class="m d">DELETE</i>/shipments/{shipmentId}<em>화물 삭제</em></span></td>
-      <td class="ct">3</td>
+      <td class="ap"><span class="api"><i class="m g">GET</i>/shipments/{shipmentId}<em>화물 상세 조회</em></span></td>
+      <td class="ct">1</td>
     </tr>
 <tr>
       <td class="sc op"><b>알림 센터</b><code>18_notification_center</code></td>
@@ -464,7 +464,7 @@
     <div class="grow"></div>
     <div class="foot">
       <span><b>출처</b> &nbsp;SONAR-API.yml 의 <code>x-screen</code> 확장 필드에서 자동 생성 — 명세와 항상 일치</span>
-      <span><b>전체 API</b> &nbsp;51개 · 이 페이지 16개 화면</span>
+      <span><b>전체 API</b> &nbsp;44개 · 이 페이지 16개 화면</span>
     </div>
   </div>
 
@@ -473,7 +473,7 @@
       <span class="no">07</span>
       <h1>화면별 API 매핑 — 시스템 관리자</h1>
       <div class="sp"></div>
-      <div class="meta">SONAR · 해상물류 공급망 리스크 레이더<br>화면 11 · API 호출 26</div>
+      <div class="meta">SONAR · 해상물류 공급망 리스크 레이더<br>화면 11 · API 호출 25</div>
     </div>
     <div class="legend">
       <span class="k"><i class="m g">GET</i> 조회</span>
@@ -488,8 +488,8 @@
       <tbody>
 <tr>
       <td class="sc ad"><b>운영 대시보드</b><code>20_admin_overview</code></td>
-      <td class="ap"><span class="api"><i class="m g">GET</i>/admin/overview<em>운영 현황 요약 조회</em></span><span class="api na"><i class="m g">GET</i>/admin/collection-jobs<em>수집 작업 이력 조회</em></span></td>
-      <td class="ct">2</td>
+      <td class="ap"><span class="api"><i class="m g">GET</i>/admin/overview<em>운영 현황 요약 조회</em></span></td>
+      <td class="ct">1</td>
     </tr>
 <tr>
       <td class="sc ad"><b>이벤트 모니터링</b><code>22_event_monitor</code></td>
@@ -546,7 +546,7 @@
     <div class="grow"></div>
     <div class="foot">
       <span><b>출처</b> &nbsp;SONAR-API.yml 의 <code>x-screen</code> 확장 필드에서 자동 생성 — 명세와 항상 일치</span>
-      <span><b>전체 API</b> &nbsp;51개 · 이 페이지 11개 화면</span>
+      <span><b>전체 API</b> &nbsp;44개 · 이 페이지 11개 화면</span>
     </div>
   </div>
 

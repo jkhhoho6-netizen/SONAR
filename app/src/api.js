@@ -74,8 +74,6 @@ on('POST', '/api/v1/auth/login', ({ body }) => {
 }, { auth: false });
 
 on('POST', '/api/v1/auth/logout', ({ token }) => { db.sessions.delete(token); return { status: 204 }; });
-on('GET',  '/api/v1/auth/me', ({ user }) => V.userDto(user));
-
 /* ────────────────────────── 마스터 ────────────────────────── */
 
 on('GET', '/api/v1/companies', () => ({ items: db.companies.filter(c => c.companyType !== 'PLATFORM') }), { auth: false });
@@ -85,7 +83,6 @@ on('GET', '/api/v1/ports', ({ query }) => {
   return { items: items.map(p => V.portRef(p.portId)), total: items.length };
 });
 on('GET', '/api/v1/choke-points', () => ({ items: db.chokePoints, total: db.chokePoints.length }));
-on('GET', '/api/v1/carriers', () => ({ items: db.carriers, total: db.carriers.length }));
 on('GET', '/api/v1/voyages', ({ query }) => {
   const q = (query.query || '').toLowerCase();
   const items = db.voyages.map(V.vesselDto).filter(v => !q || v.vesselName.toLowerCase().includes(q) || v.voyageNo.toLowerCase().includes(q));
@@ -258,33 +255,6 @@ on('POST', '/api/v1/shipments', ({ user, body }) => {
   return { status: 201, body: V.shipmentDetailDto(s) };
 });
 
-on('PATCH', '/api/v1/shipments/:shipmentId', ({ user, params, body }) => {
-  const s = V.findShipment(params.shipmentId);
-  if (!s) throw notfound('화물을 찾을 수 없습니다.');
-  if (user.role !== 'ADMIN' && s.ownerUserId !== user.userId) throw forbid('본인이 등록한 화물만 수정할 수 있습니다.');
-  if (s.status === 'ARRIVED') throw conflict('INVALID_STATE', '이미 도착 처리된 화물은 수정할 수 없습니다.');
-  const editable = ['commodity', 'cargoValueUsd', 'etd', 'eta', 'customerDueDate', 'alternativeRouteAvailable',
-    'voyageId', 'incoterms', 'containerNo', 'containerType', 'containerCount', 'weightKg', 'customerName', 'memo'];
-  editable.forEach(f => { if (body[f] !== undefined) s[f] = body[f]; });
-  if (body.routePoints) s.routePoints = body.routePoints.map((rp, i) => ({ seq: i + 1, ...rp }));
-  if (s.status === 'REJECTED') { s.status = 'PENDING_APPROVAL'; s.rejectReason = null; }
-  recomputeMatches(db);
-  audit(user.userId, 'SHIPMENT_UPDATE', 'SHIPMENT', s.shipmentId, `${s.shipmentNo} 수정`);
-  return V.shipmentDetailDto(s);
-});
-
-on('DELETE', '/api/v1/shipments/:shipmentId', ({ user, params }) => {
-  const idx = db.shipments.findIndex(s => s.shipmentId === params.shipmentId);
-  if (idx < 0) throw notfound('화물을 찾을 수 없습니다.');
-  const s = db.shipments[idx];
-  if (user.role !== 'ADMIN' && s.ownerUserId !== user.userId) throw forbid('본인이 등록한 화물만 삭제할 수 있습니다.');
-  if (s.status === 'IN_TRANSIT') throw conflict('INVALID_STATE', '운송 중인 화물은 삭제할 수 없습니다. 취소 처리를 이용하세요.');
-  db.shipments.splice(idx, 1);
-  recomputeMatches(db);
-  audit(user.userId, 'SHIPMENT_DELETE', 'SHIPMENT', s.shipmentId, `${s.shipmentNo} 삭제`);
-  return { status: 204 };
-});
-
 /* ────────────────────────── 리스크 이벤트 ────────────────────────── */
 
 on('GET', '/api/v1/risk-events', ({ user, query }) => {
@@ -336,17 +306,6 @@ on('GET', '/api/v1/matches/:matchId', ({ user, params }) => {
   return V.matchDetailDto(m);
 });
 
-on('PATCH', '/api/v1/matches/:matchId', ({ user, params, body }) => {
-  const m = V.findMatch(params.matchId);
-  if (!m) throw notfound('영향 건을 찾을 수 없습니다.');
-  if (user.role !== 'ADMIN' && m.companyId !== user.companyId) throw forbid();
-  const allowed = ['OPEN', 'ACKNOWLEDGED', 'ACTION_TAKEN', 'RESOLVED', 'FALSE_POSITIVE'];
-  const status = require_(body.status, 'status');
-  if (!allowed.includes(status)) throw bad(`status 는 ${allowed.join(', ')} 중 하나여야 합니다.`, [{ field: 'status', reason: 'ENUM' }]);
-  m.status = status; m.updatedAt = db.now();
-  return V.matchDetailDto(m);
-});
-
 on('GET', '/api/v1/matches/:matchId/playbooks', ({ user, params }) => {
   const m = V.findMatch(params.matchId);
   if (!m) throw notfound('영향 건을 찾을 수 없습니다.');
@@ -373,14 +332,6 @@ on('POST', '/api/v1/matches/:matchId/actions', ({ user, params, body }) => {
   if (m.status === 'OPEN' || m.status === 'ACKNOWLEDGED') { m.status = 'ACTION_TAKEN'; m.updatedAt = db.now(); }
   audit(user.userId, 'ACTION_CREATE', 'MATCH', m.matchId, `${actionType} 조치 등록`);
   return { status: 201, body: V.actionDto(a) };
-});
-
-on('PATCH', '/api/v1/actions/:actionId', ({ user, params, body }) => {
-  const a = db.actionLogs.find(x => x.actionId === params.actionId);
-  if (!a) throw notfound('조치 기록을 찾을 수 없습니다.');
-  if (user.role !== 'ADMIN' && a.userId !== user.userId) throw forbid('본인이 등록한 조치만 수정할 수 있습니다.');
-  ['content', 'result', 'resultNote', 'actionType'].forEach(f => { if (body[f] !== undefined) a[f] = body[f]; });
-  return V.actionDto(a);
 });
 
 on('POST', '/api/v1/matches/:matchId/feedback', ({ user, params, body }) => {
@@ -753,7 +704,3 @@ on('GET', '/api/v1/admin/audit-logs', ({ query }) => {
   return paginate(list.map(a => ({ ...a, actorName: (V.findUser(a.actorUserId) || {}).name || a.actorUserId })), query);
 }, ADMIN);
 
-on('GET', '/api/v1/admin/collection-jobs', ({ query }) => {
-  const list = db.collectionJobs.map(j => ({ ...j, sourceName: (db.riskSources.find(s => s.sourceId === j.sourceId) || {}).name }));
-  return paginate(list, query);
-}, ADMIN);

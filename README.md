@@ -26,7 +26,7 @@ cd app && npm start
 app/
 ├─ src/
 │  ├─ server.js         # HTTP 서버 (REST API + 정적 파일)
-│  ├─ api.js            # 51개 REST 엔드포인트 정의 및 핸들러
+│  ├─ api.js            # 44개 REST 엔드포인트 정의 및 핸들러
 │  ├─ db.js             # 인메모리 저장소 + 시드 로딩
 │  ├─ risk.js           # FR-03 매칭 엔진 / FR-04 리스크 점수 산출
 │  ├─ route-planner.js  # 출발·도착항 → 경유 요충지·ETA 추천
@@ -39,6 +39,19 @@ app/
    ├─ css/app.css
    └─ js/  (api, ui, map, app + views/auth, views/operator, views/admin)
 ```
+
+## 설계 산출물 (docs/)
+
+| 파일 | 내용 |
+|---|---|
+| `SONAR-API.yml` | OpenAPI 3.0 API 명세 — 오퍼레이션 44, 스키마 70 |
+| `SONAR-DB.dbml` | 데이터 모델 — 엔터티 23, 관계 40 (dbdiagram.io 에서 ERD 생성) |
+| `ui-flow.html` | UI 흐름도 4페이지 (전체 흐름 · 연계와 예외 · 화면별 API 매핑 2장) |
+
+세 문서는 서로 맞물려 있다.
+API 명세의 `x-screen` 확장 필드가 UI 흐름도의 화면 ID 와 1:1로 대응하고,
+요청·응답 스키마의 모든 필드는 DBML 의 컬럼이나 조인으로 설명된다.
+**명세에 정의된 44개 오퍼레이션은 전부 실제 화면에서 호출된다** — 예비 엔드포인트를 두지 않았다.
 
 ## UI 흐름도 (화면 목록)
 

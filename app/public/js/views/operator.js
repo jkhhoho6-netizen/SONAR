@@ -735,7 +735,7 @@ export async function shipmentDetail({ params }) {
   return { title:`화물 ${s.shipmentNo}`, crumb:`${esc(s.companyName)} · ${esc(s.commodity)}`,
     html:`<div style="margin-bottom:14px"><a class="btn sm ghost" href="#/shipments">← 화물 목록</a></div>
     ${s.status === 'REJECTED' ? `<div class="banner err"><span class="ic">⛔</span><div><b>등록이 반려되었습니다.</b><br>
-      ${esc(s.rejectReason || '')}<br><span style="font-size:13px">내용을 수정하면 다시 승인 대기 상태로 전환됩니다.</span></div></div>` : ''}
+      ${esc(s.rejectReason || '')}<br><span style="font-size:13px">사유를 확인한 뒤 새로 등록해 주세요.</span></div></div>` : ''}
     ${s.status === 'PENDING_APPROVAL' ? `<div class="banner warn"><span class="ic">⏳</span><div>
       <b>관리자 승인 대기 중입니다.</b> 아래 리스크 분석은 잠정 결과이며, 승인 후 알림 발송 대상이 됩니다.</div></div>` : ''}
     <div class="cols"><div>

@@ -11,7 +11,7 @@ info:
 
     ## 화면 ↔ API 대응
     모든 오퍼레이션에는 `x-screen` 확장 필드가 있으며, UI 흐름도의 화면 ID 와 1:1로 대응한다.
-    `x-implemented: false` 는 명세에는 정의되어 있으나 프로토타입에서 아직 화면에 연결하지 않은 오퍼레이션이다.
+    명세에 정의된 오퍼레이션은 전부 실제 화면에서 호출된다 (설계상 예비 엔드포인트를 두지 않았다).
 
     | 화면 ID | 화면명 | 액터 |
     |---|---|---|
@@ -168,22 +168,6 @@ paths:
         '204': { description: 로그아웃됨 }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /auth/me:
-    get:
-      tags: [Auth]
-      operationId: getMe
-      summary: 내 계정 정보 조회
-      description: 토큰에 연결된 사용자 정보를 반환한다.
-      x-screen: [00_shell]
-      x-implemented: false
-      responses:
-        '200':
-          description: 조회 성공
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/User' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
   # ══════════════════ Master ══════════════════
 
   /companies:
@@ -251,27 +235,6 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/ChokePoint' }
                   total: { type: integer, example: 9 }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-
-  /carriers:
-    get:
-      tags: [Master]
-      operationId: listCarriers
-      summary: 선사 목록 조회
-      x-screen: [16_shipment_create]
-      x-implemented: false
-      responses:
-        '200':
-          description: 조회 성공
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items: { $ref: '#/components/schemas/Carrier' }
-                  total: { type: integer, example: 6 }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /voyages:
@@ -468,45 +431,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-    patch:
-      tags: [Shipment]
-      operationId: updateShipment
-      summary: 화물 수정
-      description: |
-        본인이 등록한 화물만 수정할 수 있다. 반려(`REJECTED`) 상태에서 수정하면
-        다시 `PENDING_APPROVAL` 로 전이되고 재매칭이 수행된다.
-      x-screen: [17_shipment_detail]
-      x-implemented: false
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/ShipmentUpdateRequest' }
-      responses:
-        '200':
-          description: 수정 완료
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ShipmentDetail' }
-        '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/StateConflict' }
-    delete:
-      tags: [Shipment]
-      operationId: deleteShipment
-      summary: 화물 삭제
-      description: 운송 중(`IN_TRANSIT`)인 화물은 삭제할 수 없다.
-      x-screen: [17_shipment_detail]
-      x-implemented: false
-      responses:
-        '204': { description: 삭제됨 }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/StateConflict' }
-
   # ══════════════════ RiskEvent ══════════════════
 
   /risk-events:
@@ -636,33 +560,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-    patch:
-      tags: [Match]
-      operationId: updateMatchStatus
-      summary: 영향 건 처리 상태 변경
-      description: 확인 · 종결 등 담당자의 처리 상태를 변경한다.
-      x-screen: [12_match_detail]
-      x-implemented: false
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [status]
-              properties:
-                status: { $ref: '#/components/schemas/MatchStatus' }
-      responses:
-        '200':
-          description: 변경 완료
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/MatchDetail' }
-        '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-
   /matches/{matchId}/playbooks:
     parameters:
       - $ref: '#/components/parameters/MatchId'
@@ -740,40 +637,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Feedback' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-
-  /actions/{actionId}:
-    parameters:
-      - name: actionId
-        in: path
-        required: true
-        schema: { type: string, example: AC0101 }
-    patch:
-      tags: [Match]
-      operationId: updateAction
-      summary: 조치 결과 수정
-      description: 본인이 등록한 조치의 진행 결과·메모를 갱신한다.
-      x-screen: [12a_action_create]
-      x-implemented: false
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                actionType: { $ref: '#/components/schemas/ActionType' }
-                content: { type: string }
-                result: { $ref: '#/components/schemas/ActionResult' }
-                resultNote: { type: string, nullable: true }
-      responses:
-        '200':
-          description: 수정 완료
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/ActionLog' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1522,33 +1385,6 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
-  /admin/collection-jobs:
-    get:
-      tags: [Admin]
-      operationId: listCollectionJobs
-      summary: 수집 작업 이력 조회
-      description: 소스별 주기 수집 작업의 실행 이력. 운영 대시보드에는 최근 6건만 포함된다.
-      x-screen: [20_admin_overview]
-      x-implemented: false
-      parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/Size'
-      responses:
-        '200':
-          description: 조회 성공
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/PageMeta'
-                  - type: object
-                    properties:
-                      items:
-                        type: array
-                        items: { $ref: '#/components/schemas/CollectionJob' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-
 components:
 
   # ══════════════════ 공통 파라미터 ══════════════════
@@ -1792,12 +1628,6 @@ components:
         lon: { type: number, format: double, example: 56.25 }
         radiusKm: { type: integer, example: 130 }
 
-    Carrier:
-      type: object
-      properties:
-        carrierId: { type: string, example: CR01 }
-        name: { type: string, example: HMM }
-        scacCode: { type: string, example: HDMU }
 
     Voyage:
       type: object
@@ -1988,24 +1818,6 @@ components:
               chokePointId: { type: string, example: CP02 }
               expectedPassageDate: { type: string, format: date, example: '2026-09-16' }
 
-    ShipmentUpdateRequest:
-      type: object
-      description: 전달한 필드만 갱신된다
-      properties:
-        commodity: { type: string }
-        cargoValueUsd: { type: number, format: double }
-        etd: { type: string, format: date }
-        eta: { type: string, format: date }
-        customerDueDate: { type: string, format: date }
-        alternativeRouteAvailable: { type: boolean }
-        voyageId: { type: string, nullable: true }
-        incoterms: { type: string }
-        containerNo: { type: string, nullable: true }
-        containerType: { type: string }
-        containerCount: { type: integer }
-        weightKg: { type: integer }
-        customerName: { type: string, nullable: true }
-        memo: { type: string, nullable: true }
 
     ShipmentSummary:
       type: object
